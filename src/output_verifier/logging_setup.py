@@ -7,12 +7,34 @@ import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
-from output_verifier.constants import APPLICATION_NAME
+from output_verifier.constants import VerificationType
 from output_verifier.models import LoggingConfig
+from output_verifier.utilities.filename_utils import build_run_artifact_filename
 from output_verifier.utilities.path_utils import ensure_directory
 
 
-def setup_logging(config: LoggingConfig) -> Path | None:
+def build_log_filename(
+    verification_type: VerificationType,
+    immediate_parent: str,
+    timestamp_token: str,
+) -> str:
+    """Build the verification log filename for the current run."""
+    return build_run_artifact_filename(
+        prefix="VerificationLog",
+        verification_type=verification_type.value,
+        immediate_parent=immediate_parent,
+        timestamp=timestamp_token,
+        extension=".Log",
+    )
+
+
+def setup_logging(
+    config: LoggingConfig,
+    *,
+    verification_type: VerificationType,
+    immediate_parent: str,
+    timestamp_token: str,
+) -> Path | None:
     """Configure root logging handlers and return the log file path when used."""
     root_logger = logging.getLogger()
     root_logger.handlers.clear()
@@ -33,7 +55,11 @@ def setup_logging(config: LoggingConfig) -> Path | None:
 
     if config.log_to_file:
         ensure_directory(config.output_folder)
-        log_file_path = config.output_folder / f"{APPLICATION_NAME}.log"
+        log_file_path = config.output_folder / build_log_filename(
+            verification_type,
+            immediate_parent,
+            timestamp_token,
+        )
         file_handler = RotatingFileHandler(
             log_file_path,
             maxBytes=config.max_bytes,

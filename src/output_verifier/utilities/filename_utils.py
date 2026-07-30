@@ -46,3 +46,30 @@ def is_supported_filename(
 ) -> bool:
     """Return True when the filename matches a supported pattern for the output type."""
     return match_filename_rule(profile, output_type, filename) is not None
+
+
+def immediate_parent_folder_name(folder_path: Path) -> str:
+    """Return the immediate parent folder name from an Actual/Expected root path."""
+    return folder_path.name
+
+
+def build_run_artifact_filename(
+    *,
+    prefix: str,
+    verification_type: str,
+    immediate_parent: str,
+    timestamp: str,
+    extension: str,
+) -> str:
+    """
+    Build a run artifact filename.
+
+    Example:
+      VerificationReport_GDI_20260612_000022_fullrun_20260730133505.xlsx
+      VerificationLog_GDI_20260612_000022_fullrun_20260730133505.Log
+    """
+    extension_with_dot = extension if extension.startswith(".") else f".{extension}"
+    return (
+        f"{prefix}_{verification_type}_{immediate_parent}_{timestamp}"
+        f"{extension_with_dot}"
+    )

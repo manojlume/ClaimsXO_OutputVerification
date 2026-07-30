@@ -13,6 +13,8 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 from output_verifier.constants import VerificationStatus, VerificationType
 from output_verifier.models import ExecutionSummary, ReportConfig, ReportRow
+from output_verifier.utilities.filename_utils import build_run_artifact_filename
+from output_verifier.utilities.path_utils import ensure_directory
 
 LOGGER = logging.getLogger(__name__)
 
@@ -42,15 +44,23 @@ COLUMN_WIDTHS = {
 def build_report_filename(
     report_config: ReportConfig,
     verification_type: VerificationType,
+    immediate_parent: str,
     timestamp: datetime,
 ) -> str:
-    """Build the Excel report filename from configuration."""
-    parts = [report_config.base_file_name]
-    if report_config.include_verification_type:
-        parts.append(verification_type.value)
-    if report_config.include_timestamp:
-        parts.append(timestamp.strftime(report_config.timestamp_format))
-    return "_".join(parts) + ".xlsx"
+    """
+    Build the Excel report filename.
+
+    Pattern:
+      VerificationReport_<verification-type>_<immediate parent>_<yyyyMMddHHmmss>.xlsx
+    """
+    timestamp_token = timestamp.strftime(report_config.timestamp_format)
+    return build_run_artifact_filename(
+        prefix=report_config.base_file_name,
+        verification_type=verification_type.value,
+        immediate_parent=immediate_parent,
+        timestamp=timestamp_token,
+        extension=".xlsx",
+    )
 
 
 def _worksheet_name(verification_type: VerificationType) -> str:
@@ -161,11 +171,17 @@ class ExcelReporter:
         self,
         report_config: ReportConfig,
         summary: ExecutionSummary,
+        *,
+        immediate_parent: str,
+        timestamp: datetime,
     ) -> Path:
         """Create the Excel report and return its path."""
-        timestamp = summary.execution_end_time or datetime.now()
+        ensure_directory(report_config.output_folder)
         filename = build_report_filename(
-            report_config, summary.verification_type, timestamp
+            report_config,
+            summary.verification_type,
+            immediate_parent,
+            timestamp,
         )
         report_path = report_config.output_folder / filename
 

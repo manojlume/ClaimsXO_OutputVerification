@@ -154,10 +154,22 @@ Configuration precedence:
 Filename pattern:
 
 ```text
-<base_file_name>_<verification_type>_<timestamp>.xlsx
+VerificationReport_<verification-type>_<immediate-actual-parent>_<yyyyMMddHHmmss>.xlsx
 ```
 
-Example: `VerificationReport_GDI_20260730113045.xlsx`
+Example actual root:
+
+```text
+H:\...\ActualOutput\ClaimsXO\GDI\20260612_000022_fullrun
+```
+
+Example report:
+
+```text
+VerificationReport_GDI_20260612_000022_fullrun_20260730113045.xlsx
+```
+
+The report is written under `report.output_folder` from configuration.
 
 Worksheets:
 
@@ -180,8 +192,18 @@ Formatting includes bold headers, frozen top row, auto-filter, wrapped Issue tex
 
 Logging uses the standard library with optional console and rotating file handlers (`RotatingFileHandler`).
 
-Default log folder: `./logs`  
-Default log file: `output-verifier.log`
+Default log folder: value of `logging.output_folder`  
+Default log file pattern:
+
+```text
+VerificationLog_<verification-type>_<immediate-actual-parent>_<yyyyMMddHHmmss>.Log
+```
+
+Example:
+
+```text
+VerificationLog_GDI_20260612_000022_fullrun_20260730113045.Log
+```
 
 Logged information includes start/end, version, resolved config, discovery counts, current scenario/files, comparison results, warnings, parsing failures, summary counts, and exit code. Full file content is not logged; long field values are truncated.
 

@@ -15,6 +15,7 @@ from output_verifier.constants import APPLICATION_NAME, APPLICATION_VERSION, Exi
 from output_verifier.logging_setup import setup_logging
 from output_verifier.models import ExecutionSummary
 from output_verifier.reporting.excel_reporter import ExcelReporter
+from output_verifier.utilities.filename_utils import immediate_parent_folder_name
 from output_verifier.verification_service import VerificationService
 
 LOGGER = logging.getLogger(__name__)
@@ -69,8 +70,16 @@ def run(argv: list[str] | None = None) -> int:
         print_system_error(f"Unexpected configuration error: {error}")
         return ExitCode.SYSTEM_ERROR.value
 
+    immediate_parent = immediate_parent_folder_name(resolved.actual_parent_folder)
+    timestamp_token = execution_start.strftime(resolved.report.timestamp_format)
+
     try:
-        setup_logging(resolved.logging)
+        setup_logging(
+            resolved.logging,
+            verification_type=resolved.verification_type,
+            immediate_parent=immediate_parent,
+            timestamp_token=timestamp_token,
+        )
     except Exception as error:  # noqa: BLE001
         print_system_error(f"Logging cannot be initialized: {error}")
         return ExitCode.SYSTEM_ERROR.value
@@ -80,10 +89,12 @@ def run(argv: list[str] | None = None) -> int:
     LOGGER.info("Resolved verification_type=%s", resolved.verification_type.value)
     LOGGER.info("Expected root=%s", resolved.expected_parent_folder)
     LOGGER.info("Actual root=%s", resolved.actual_parent_folder)
+    LOGGER.info("Immediate actual parent folder=%s", immediate_parent)
     LOGGER.info(
-        "Resolved configuration: solution_type=%s report_folder=%s log_level=%s",
+        "Resolved configuration: solution_type=%s report_folder=%s log_folder=%s log_level=%s",
         resolved.solution_type,
         resolved.report.output_folder,
+        resolved.logging.output_folder,
         resolved.logging.level,
     )
 
@@ -102,7 +113,12 @@ def run(argv: list[str] | None = None) -> int:
         summary.exit_code = comparison_exit.value
 
         reporter = ExcelReporter()
-        report_path = reporter.write_report(resolved.report, summary)
+        report_path = reporter.write_report(
+            resolved.report,
+            summary,
+            immediate_parent=immediate_parent,
+            timestamp=execution_start,
+        )
         summary.report_path = report_path
         summary.execution_end_time = datetime.now()
         summary.exit_code = comparison_exit.value

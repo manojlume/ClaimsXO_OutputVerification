@@ -24,9 +24,10 @@ def test_build_report_filename() -> None:
     name = build_report_filename(
         config,
         VerificationType.GDI,
+        "20260612_000022_fullrun",
         datetime(2026, 7, 30, 11, 30, 45),
     )
-    assert name == "VerificationReport_GDI_20260730113045.xlsx"
+    assert name == "VerificationReport_GDI_20260612_000022_fullrun_20260730113045.xlsx"
 
 
 def test_excel_reporter_creates_sheets(tmp_path: Path) -> None:
@@ -47,7 +48,7 @@ def test_excel_reporter_creates_sheets(tmp_path: Path) -> None:
         execution_start_time=datetime(2026, 7, 30, 11, 0, 0),
         execution_end_time=datetime(2026, 7, 30, 11, 30, 45),
         expected_root=tmp_path / "expected",
-        actual_root=tmp_path / "actual",
+        actual_root=tmp_path / "actual" / "20260612_000022_fullrun",
         report_rows=[
             ReportRow(
                 verification_type="GDI",
@@ -62,7 +63,13 @@ def test_excel_reporter_creates_sheets(tmp_path: Path) -> None:
         exit_code=0,
     )
 
-    path = ExcelReporter().write_report(report_config, summary)
+    path = ExcelReporter().write_report(
+        report_config,
+        summary,
+        immediate_parent="20260612_000022_fullrun",
+        timestamp=datetime(2026, 7, 30, 11, 30, 45),
+    )
+    assert path.name == "VerificationReport_GDI_20260612_000022_fullrun_20260730113045.xlsx"
     workbook = load_workbook(path)
     assert "GDI Verification" in workbook.sheetnames
     assert "Summary" in workbook.sheetnames
