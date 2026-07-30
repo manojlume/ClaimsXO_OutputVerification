@@ -8,6 +8,13 @@ Executable name: `output-verifier.exe`
 
 `--config` defaults to `config.yaml` next to the executable (or in the current folder for source runs).
 
+## Documentation
+
+Detailed developer docs live under [`doc/`](doc/README.md):
+
+- [Developer Guide](doc/Developer_Guide.md) — architecture, business logic, configuration, extending TPAs
+- [Function Guide](doc/Function_Guide.md) — module/class/function reference
+
 ## Purpose
 
 After QA has already produced Expected and Actual output trees, this tool:
