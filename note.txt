@@ -1,0 +1,7 @@
+set PYTHONPATH=src
+python -m output_verifier --config config\config.yaml --verification-type GDI --expected-parent-folder "H:\ExpectedOutputs" --actual-parent-folder "H:\ActualOutputs"
+
+output-verifier.exe --verification-type HSAB --expected-parent-folder "H:\Work\GitHubApp\OutputVerification_ClaimsXO\Actual_Output\ClaimsXO\HSAB" --actual-parent-folder "H:\Work\GitHubApp\OutputVerification_ClaimsXO\Testoutput\ClaimsXO\HSAB\20260730_085924_fullrun"
+
+REM Optional explicit config:
+REM output-verifier.exe --config config.yaml --verification-type HSAB ...
