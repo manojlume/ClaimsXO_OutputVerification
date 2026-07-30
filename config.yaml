@@ -1,16 +1,16 @@
-solution_type: ClaimsXO
+solution_type: ClaimsXO # ClaimsXO or EnrollmentXO
+verification_type: GDI # ClaimsXO: GDI/HSAB | EnrollmentXO: ABG/GDI/HSAB
 
-verification_type: GDI # GDI or HSAB
 expected_parent_folder: 'H:\Work\GitHubApp\OutputVerification_ClaimsXO\ExpectedOutput\ClaimsXO\GDI'
 actual_parent_folder: 'H:\Work\GitHubApp\OutputVerification_ClaimsXO\ActualOutput\ClaimsXO\GDI\20260612_000022_fullrun'
 
 #expected_parent_folder: 'H:\Work\GitHubApp\OutputVerification_ClaimsXO\ExpectedOutput\ClaimsXO\HSAB'
 #actual_parent_folder: 'H:\Work\GitHubApp\OutputVerification_ClaimsXO\ActualOutput\ClaimsXO\HSAB\20260730_085924_fullrun'
 
-
 report:
   output_folder: "./reports"
   base_file_name: "VerificationReport"
+  include_solution_type: true
   include_verification_type: true
   include_timestamp: true
   timestamp_format: "%Y%m%d%H%M%S"
@@ -28,16 +28,28 @@ logging:
   backup_count: 5
 
 ignore_rules:
-  GDI:
-    lh1_xml_paths:
-      - "/LH1StandardClaimsExchange/@CreatedDateTime"
-      - "/LH1StandardClaimsExchange/@FileDateTime"
-      - "//*[local-name()='CustomProperties'][@KeyName='CXC ID']/@KeyValue"
-    manual_csv_columns:
-      - "FileDate"
-      - "CXCId"
-    patient_manual_csv_columns:
-      - "FileDate"
-    mbi_field_positions: [19]
-  HSAB:
-    wex_xml_paths: []
+  ClaimsXO:
+    GDI:
+      lh1_xml_paths:
+        - "/LH1StandardClaimsExchange/@CreatedDateTime"
+        - "/LH1StandardClaimsExchange/@FileDateTime"
+        - "//*[local-name()='CustomProperties'][@KeyName='CXC ID']/@KeyValue"
+      manual_csv_columns:
+        - "FileDate"
+        - "CXCId"
+      patient_manual_csv_columns:
+        - "FileDate"
+      mbi_field_positions:
+        - 19
+    HSAB:
+      wex_xml_paths: []
+  EnrollmentXO:
+    ABG:
+      alegeus_mbi_field_positions: []
+      report_csv_columns: []
+    GDI:
+      wexhealth_field_positions: []
+      report_csv_columns: []
+    HSAB:
+      enrollment_import_field_positions: []
+      report_csv_columns: []

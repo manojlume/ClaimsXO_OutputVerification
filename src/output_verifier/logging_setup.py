@@ -7,13 +7,14 @@ import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
-from output_verifier.constants import VerificationType
+from output_verifier.constants import SolutionType, VerificationType
 from output_verifier.models import LoggingConfig
 from output_verifier.utilities.filename_utils import build_run_artifact_filename
 from output_verifier.utilities.path_utils import ensure_directory
 
 
 def build_log_filename(
+    solution_type: SolutionType,
     verification_type: VerificationType,
     immediate_parent: str,
     timestamp_token: str,
@@ -21,6 +22,7 @@ def build_log_filename(
     """Build the verification log filename for the current run."""
     return build_run_artifact_filename(
         prefix="VerificationLog",
+        solution_type=solution_type.value,
         verification_type=verification_type.value,
         immediate_parent=immediate_parent,
         timestamp=timestamp_token,
@@ -31,6 +33,7 @@ def build_log_filename(
 def setup_logging(
     config: LoggingConfig,
     *,
+    solution_type: SolutionType,
     verification_type: VerificationType,
     immediate_parent: str,
     timestamp_token: str,
@@ -56,6 +59,7 @@ def setup_logging(
     if config.log_to_file:
         ensure_directory(config.output_folder)
         log_file_path = config.output_folder / build_log_filename(
+            solution_type,
             verification_type,
             immediate_parent,
             timestamp_token,

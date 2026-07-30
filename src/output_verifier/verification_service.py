@@ -6,13 +6,14 @@ import logging
 from collections import defaultdict
 
 from output_verifier.comparators.csv_comparator import CsvComparator
+from output_verifier.comparators.delimited_text_comparator import DelimitedTextComparator
 from output_verifier.comparators.mbi_comparator import MbiComparator
 from output_verifier.comparators.xml_comparator import XmlComparator
 from output_verifier.constants import (
     ExitCode,
     FileFormat,
     VerificationStatus,
-    get_tpa_profile,
+    get_solution_profile,
 )
 from output_verifier.file_matcher import match_files_for_output
 from output_verifier.folder_discovery import build_scenario_inventory
@@ -29,19 +30,21 @@ LOGGER = logging.getLogger(__name__)
 
 
 class VerificationService:
-    """Run end-to-end ClaimsXO expected-vs-actual output verification."""
+    """Run end-to-end expected-vs-actual output verification."""
 
     def __init__(self, config: ResolvedConfig) -> None:
         self._config = config
-        self._profile = get_tpa_profile(config.verification_type)
+        self._profile = get_solution_profile(config.solution_type, config.verification_type)
         self._xml_comparator = XmlComparator()
         self._csv_comparator = CsvComparator()
         self._mbi_comparator = MbiComparator()
+        self._delimited_text_comparator = DelimitedTextComparator()
 
     def run(self) -> tuple[list[ReportRow], ExitCode]:
         """Execute verification and return report rows plus comparison exit code."""
         LOGGER.info(
-            "Starting verification. type=%s expected=%s actual=%s",
+            "Starting verification. solution=%s type=%s expected=%s actual=%s",
+            self._config.solution_type.value,
             self._config.verification_type.value,
             self._config.expected_parent_folder,
             self._config.actual_parent_folder,
@@ -50,6 +53,7 @@ class VerificationService:
         inventory = build_scenario_inventory(
             self._config.expected_parent_folder,
             self._config.actual_parent_folder,
+            self._config.solution_type,
             self._config.verification_type,
         )
         LOGGER.info("Scenario discovery count: %s", len(inventory))
@@ -107,16 +111,10 @@ class VerificationService:
             ]
 
         pairs = match_files_for_output(discovered, self._profile)
-        return self._rows_from_matched_pairs(discovered, pairs)
+        return self._rows_from_matched_pairs(pairs)
 
-    def _rows_from_matched_pairs(
-        self,
-        discovered: DiscoveredOutput,
-        pairs: list[MatchedFilePair],
-    ) -> list[ReportRow]:
+    def _rows_from_matched_pairs(self, pairs: list[MatchedFilePair]) -> list[ReportRow]:
         rows: list[ReportRow] = []
-
-        # Detect count mismatches per normalized identity without duplicating file rows.
         identity_expected_counts: dict[str, int] = defaultdict(int)
         identity_actual_counts: dict[str, int] = defaultdict(int)
         for pair in pairs:
@@ -126,7 +124,6 @@ class VerificationService:
                 identity_actual_counts[pair.normalized_identity] += 1
 
         reported_count_mismatch: set[str] = set()
-
         for pair in pairs:
             expected_count = identity_expected_counts[pair.normalized_identity]
             actual_count = identity_actual_counts[pair.normalized_identity]
@@ -146,9 +143,7 @@ class VerificationService:
                         actual_name="",
                     )
                 )
-
             rows.append(self._compare_pair(pair))
-
         return rows
 
     def _compare_pair(self, pair: MatchedFilePair) -> ReportRow:
@@ -156,41 +151,34 @@ class VerificationService:
         actual_name = pair.actual_file.name if pair.actual_file else ""
 
         if pair.expected_file is None and pair.actual_file is not None:
-            if not pair.is_valid_pattern:
-                return self._file_row(
-                    pair,
-                    status=VerificationStatus.FAILED,
-                    issue="Unsupported or invalid filename pattern",
-                    expected_name=expected_name,
-                    actual_name=actual_name,
-                )
+            issue = (
+                "Unsupported or invalid filename pattern"
+                if not pair.is_valid_pattern
+                else "Unexpected actual file"
+            )
             return self._file_row(
                 pair,
                 status=VerificationStatus.FAILED,
-                issue="Unexpected actual file",
+                issue=issue,
                 expected_name=expected_name,
                 actual_name=actual_name,
             )
 
         if pair.expected_file is not None and pair.actual_file is None:
-            if not pair.is_valid_pattern:
-                return self._file_row(
-                    pair,
-                    status=VerificationStatus.FAILED,
-                    issue="Unsupported or invalid filename pattern",
-                    expected_name=expected_name,
-                    actual_name=actual_name,
-                )
+            issue = (
+                "Unsupported or invalid filename pattern"
+                if not pair.is_valid_pattern
+                else "Expected file missing"
+            )
             return self._file_row(
                 pair,
                 status=VerificationStatus.FAILED,
-                issue="Expected file missing",
+                issue=issue,
                 expected_name=expected_name,
                 actual_name=actual_name,
             )
 
         assert pair.expected_file is not None and pair.actual_file is not None
-
         if not pair.is_valid_pattern:
             return self._file_row(
                 pair,
@@ -237,6 +225,12 @@ class VerificationService:
             return self._csv_comparator.compare(pair.expected_file, pair.actual_file, options)
         if pair.file_format == FileFormat.MBI:
             return self._mbi_comparator.compare(pair.expected_file, pair.actual_file, options)
+        if pair.file_format == FileFormat.DELIMITED_TEXT:
+            return self._delimited_text_comparator.compare(
+                pair.expected_file,
+                pair.actual_file,
+                options,
+            )
 
         return ComparisonResult(
             status=VerificationStatus.FAILED,
@@ -246,18 +240,42 @@ class VerificationService:
     def _build_comparison_options(self, pair: MatchedFilePair) -> ComparisonOptions:
         ignore_rules = self._config.ignore_rules
         ignore_key = pair.ignore_rule_key or ""
+        solution = self._config.solution_type
+        verification = self._config.verification_type
 
         if pair.file_format == FileFormat.XML:
             return ComparisonOptions(
-                ignored_xml_paths=ignore_rules.xml_paths_for(
-                    self._config.verification_type, ignore_key
-                )
+                ignored_xml_paths=ignore_rules.xml_paths_for(solution, verification, ignore_key)
             )
         if pair.file_format == FileFormat.CSV:
-            return ComparisonOptions(ignored_csv_columns=ignore_rules.csv_columns_for(ignore_key))
+            return ComparisonOptions(
+                ignored_csv_columns=ignore_rules.csv_columns_for(
+                    solution, verification, ignore_key
+                )
+            )
         if pair.file_format == FileFormat.MBI:
             return ComparisonOptions(
-                ignored_mbi_field_positions=ignore_rules.mbi_field_positions()
+                ignored_mbi_field_positions=ignore_rules.field_positions_for(
+                    solution, verification, ignore_key
+                )
+            )
+        if pair.file_format == FileFormat.DELIMITED_TEXT:
+            if pair.has_header:
+                return ComparisonOptions(
+                    delimiter=pair.delimiter or ",",
+                    has_header=True,
+                    ignored_columns=ignore_rules.csv_columns_for(
+                        solution, verification, ignore_key
+                    ),
+                    compare_trailing_empty_fields=pair.compare_trailing_empty_fields,
+                )
+            return ComparisonOptions(
+                delimiter=pair.delimiter or ",",
+                has_header=False,
+                ignored_field_positions=ignore_rules.field_positions_for(
+                    solution, verification, ignore_key
+                ),
+                compare_trailing_empty_fields=pair.compare_trailing_empty_fields,
             )
         return ComparisonOptions()
 
@@ -270,6 +288,7 @@ class VerificationService:
     ) -> ReportRow:
         key = discovered.scenario_key
         return ReportRow(
+            solution_type=self._config.solution_type.value,
             verification_type=self._config.verification_type.value,
             scenario=key.display_scenario(),
             run_type=key.run_type,
@@ -291,6 +310,7 @@ class VerificationService:
     ) -> ReportRow:
         key = pair.scenario_key
         return ReportRow(
+            solution_type=self._config.solution_type.value,
             verification_type=self._config.verification_type.value,
             scenario=key.display_scenario(),
             run_type=key.run_type,

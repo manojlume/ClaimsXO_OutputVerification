@@ -1,6 +1,6 @@
-# ClaimsXO Output Verifier
+# Output Verifier (ClaimsXO + EnrollmentXO)
 
-Python utility that compares **Expected Output** files against **Actual Output** files after a ClaimsXO QA regression run, then writes an Excel verification report.
+Python utility that compares **Expected Output** files against **Actual Output** files after a QA regression run, then writes an Excel verification report.
 
 Package name: `output_verifier`  
 Main command: `python -m output_verifier --config config.yaml`  
@@ -20,19 +20,49 @@ Detailed developer docs live under [`doc/`](doc/README.md):
 After QA has already produced Expected and Actual output trees, this tool:
 
 1. Discovers supported scenario / run / output folders
-2. Matches expected and actual files by normalized filename identity (datetime ignored)
-3. Compares XML, CSV, and MBI content with configured ignore rules
+2. Matches expected and actual files by normalized filename identity (datetime/runtime ignored)
+3. Compares content with format-specific comparators and configured ignore rules
 4. Writes an Excel report and prints a console summary
 5. Returns an exit code suitable for automation
 
-## Supported TPAs
+## Supported solution types
+
+| Solution | Verification types |
+| --- | --- |
+| **ClaimsXO** | GDI, HSAB |
+| **EnrollmentXO** | ABG, GDI, HSAB |
+
+### ClaimsXO
 
 | Verification type | Output folders | File types |
 | --- | --- | --- |
 | **GDI** | `LH1`, `manual`, `ALG` | XML, CSV, MBI |
 | **HSAB** | `WEX` | XML (`HB1` / `HB2`) |
 
-### Supported GDI files
+### EnrollmentXO
+
+| Verification type | Output folders | Comparator |
+| --- | --- | --- |
+| **ABG** | `alegeus`, `reports` | DelimitedTextComparator (comma MBI / CSV) |
+| **GDI** | `WexHealth`, `reports` | DelimitedTextComparator (pipe TXT / CSV) |
+| **HSAB** | `HSABEnrollmentImport`, `reports` | DelimitedTextComparator (comma TXT / CSV) |
+
+Ignore rules are grouped by solution and verification type:
+
+```yaml
+ignore_rules:
+  ClaimsXO:
+    GDI: { ... }
+    HSAB: { ... }
+  EnrollmentXO:
+    ABG: { ... }
+    GDI: { ... }
+    HSAB: { ... }
+```
+
+Old top-level `ignore_rules.GDI` / `ignore_rules.HSAB` still loads temporarily for ClaimsXO and logs a deprecation warning.
+
+### Supported ClaimsXO GDI files
 
 - `LH1`: `GDI_LH1_<datetime>.xml`, `GDI_LH1_MMS_<datetime>.xml`, `GDI_LH1_FLORES_<datetime>.xml`, `GDI_LH1_HNE_<datetime>.xml`, `GDI_REGEN_LH1_<datetime>.xml`
 - `manual`: `GDI_MANUAL_<datetime>.csv`, `GDI_MANUAL_PATIENT_<datetime>.csv`
@@ -78,7 +108,7 @@ Discovery rules:
 - Recursively scan for supported run folders
 - Only inspect supported output folders directly under a run folder
 - Only read files directly under those output folders
-- Ignore unsupported extensions (supported: `.xml`, `.csv`, `.mbi`)
+- Ignore unsupported extensions (ClaimsXO: `.xml`/`.csv`/`.mbi`; EnrollmentXO: `.mbi`/`.txt`/`.csv`)
 
 ## YAML configuration
 
@@ -86,12 +116,12 @@ Template: `config.yaml`
 
 Important settings:
 
-- `solution_type`: must be `ClaimsXO`
-- `verification_type`: `GDI` or `HSAB`
+- `solution_type`: `ClaimsXO` or `EnrollmentXO`
+- `verification_type`: allowed for that solution (ClaimsXO: GDI/HSAB; EnrollmentXO: ABG/GDI/HSAB)
 - `expected_parent_folder` / `actual_parent_folder`
 - `report.*` report naming, folder, and status colors
 - `logging.*` console/file logging with rotation
-- `ignore_rules.GDI` / `ignore_rules.HSAB`
+- `ignore_rules.<Solution>.<Verification>` nested ignore lists
 
 Stable application rules (filename patterns, run folders, extensions, comparators) stay in Python code, not YAML.
 
@@ -99,24 +129,29 @@ Stable application rules (filename patterns, run folders, extensions, comparator
 
 ```yaml
 ignore_rules:
-  GDI:
-    lh1_xml_paths:
-      - "/LH1StandardClaimsExchange/@CreatedDateTime"
-    manual_csv_columns:
-      - "GeneratedTimestamp"
-    patient_manual_csv_columns: []
-    mbi_field_positions:
-      - 7
-  HSAB:
-    wex_xml_paths:
-      - "/Claims/@CreatedDateTime"
+  ClaimsXO:
+    GDI:
+      lh1_xml_paths:
+        - "/LH1StandardClaimsExchange/@CreatedDateTime"
+      manual_csv_columns:
+        - "GeneratedTimestamp"
+      patient_manual_csv_columns: []
+      mbi_field_positions:
+        - 7
+    HSAB:
+      wex_xml_paths: []
+  EnrollmentXO:
+    ABG:
+      alegeus_mbi_field_positions: []
+      report_csv_columns: []
 ```
 
 Notes:
 
 - XML ignore paths use XPath; invalid XPath is a configuration error (exit code 2)
 - CSV ignore columns match header names exactly (case-sensitive)
-- MBI ignore positions are one-based positive integers
+- Field-position ignores are one-based positive integers
+- Legacy top-level `ignore_rules.GDI` / `HSAB` still loads for ClaimsXO with a deprecation warning
 
 ## Command-line examples
 
@@ -124,18 +159,21 @@ Development run (from repository root):
 
 ```bat
 set PYTHONPATH=src
-python -m output_verifier --config config.yaml --verification-type GDI --expected-parent-folder "H:\ExpectedOutputs" --actual-parent-folder "H:\ActualOutputs"
+python -m output_verifier --config config.yaml --solution-type ClaimsXO --verification-type GDI --expected-parent-folder "H:\ExpectedOutputs" --actual-parent-folder "H:\ActualOutputs"
+
+python -m output_verifier --config config.yaml --solution-type EnrollmentXO --verification-type ABG --expected-parent-folder "H:\Expected" --actual-parent-folder "H:\Actual"
 ```
 
 Or use the helper script:
 
 ```bat
-run-output-verifier.cmd --verification-type GDI --expected-parent-folder "H:\ExpectedOutputs" --actual-parent-folder "H:\ActualOutputs"
+run-output-verifier.cmd --solution-type ClaimsXO --verification-type GDI --expected-parent-folder "H:\ExpectedOutputs" --actual-parent-folder "H:\ActualOutputs"
 ```
 
 CLI overrides (override YAML):
 
 - `--config`
+- `--solution-type`
 - `--verification-type`
 - `--expected-parent-folder`
 - `--actual-parent-folder`
@@ -161,7 +199,7 @@ Configuration precedence:
 Filename pattern:
 
 ```text
-VerificationReport_<verification-type>_<immediate-actual-parent>_<yyyyMMddHHmmss>.xlsx
+VerificationReport_<solution-type>_<verification-type>_<immediate-actual-parent>_<yyyyMMddHHmmss>.xlsx
 ```
 
 Example actual root:
@@ -173,26 +211,30 @@ H:\...\ActualOutput\ClaimsXO\GDI\20260612_000022_fullrun
 Example report:
 
 ```text
-VerificationReport_GDI_20260612_000022_fullrun_20260730113045.xlsx
+VerificationReport_ClaimsXO_GDI_20260612_000022_fullrun_20260730113045.xlsx
 ```
 
 The report is written under `report.output_folder` from configuration.
 
+Difference details are embedded in **Issue** (no separate Difference 1/2 columns).
+
 Worksheets:
 
-- `GDI Verification` or `HSAB Verification`
+- `ClaimsXO GDI Verification`, `EnrollmentXO ABG Verification`, etc.
 - `Summary`
 
 Detail columns:
 
-1. Verification Type
-2. Scenario
-3. Run Type
-4. Output Type
-5. Expected File
-6. Actual File
-7. Status (`Passed` / `Failed` / `NotVerified`)
-8. Issue (includes difference details when content mismatches)
+1. Solution Type
+2. Verification Type
+3. Scenario
+4. Run Type
+5. Output Type
+6. Expected File
+7. Actual File
+8. Status (`Passed` / `Failed` / `NotVerified`)
+9. Issue (includes difference details when content mismatches)
+
 Formatting includes bold headers, frozen top row, auto-filter, wrapped Issue text, and status background colors from YAML.
 
 ## Logging
@@ -203,13 +245,13 @@ Default log folder: value of `logging.output_folder`
 Default log file pattern:
 
 ```text
-VerificationLog_<verification-type>_<immediate-actual-parent>_<yyyyMMddHHmmss>.Log
+VerificationLog_<solution-type>_<verification-type>_<immediate-actual-parent>_<yyyyMMddHHmmss>.Log
 ```
 
 Example:
 
 ```text
-VerificationLog_GDI_20260612_000022_fullrun_20260730113045.Log
+VerificationLog_ClaimsXO_GDI_20260612_000022_fullrun_20260730113045.Log
 ```
 
 Logged information includes start/end, version, resolved config, discovery counts, current scenario/files, comparison results, warnings, parsing failures, summary counts, and exit code. Full file content is not logged; long field values are truncated.

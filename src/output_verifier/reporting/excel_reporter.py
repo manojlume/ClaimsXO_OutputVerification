@@ -11,7 +11,7 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
-from output_verifier.constants import VerificationStatus, VerificationType
+from output_verifier.constants import SolutionType, VerificationStatus, VerificationType
 from output_verifier.models import ExecutionSummary, ReportConfig, ReportRow
 from output_verifier.utilities.filename_utils import build_run_artifact_filename
 from output_verifier.utilities.path_utils import ensure_directory
@@ -19,6 +19,7 @@ from output_verifier.utilities.path_utils import ensure_directory
 LOGGER = logging.getLogger(__name__)
 
 DETAIL_HEADERS = [
+    "Solution Type",
     "Verification Type",
     "Scenario",
     "Run Type",
@@ -30,19 +31,21 @@ DETAIL_HEADERS = [
 ]
 
 COLUMN_WIDTHS = {
-    1: 18,
-    2: 36,
-    3: 12,
-    4: 14,
-    5: 40,
+    1: 16,
+    2: 18,
+    3: 36,
+    4: 12,
+    5: 20,
     6: 40,
-    7: 14,
-    8: 80,
+    7: 40,
+    8: 14,
+    9: 80,
 }
 
 
 def build_report_filename(
     report_config: ReportConfig,
+    solution_type: SolutionType,
     verification_type: VerificationType,
     immediate_parent: str,
     timestamp: datetime,
@@ -51,11 +54,12 @@ def build_report_filename(
     Build the Excel report filename.
 
     Pattern:
-      VerificationReport_<verification-type>_<immediate parent>_<yyyyMMddHHmmss>.xlsx
+      VerificationReport_<solution>_<verification>_<immediate parent>_<yyyyMMddHHmmss>.xlsx
     """
     timestamp_token = timestamp.strftime(report_config.timestamp_format)
     return build_run_artifact_filename(
         prefix=report_config.base_file_name,
+        solution_type=solution_type.value,
         verification_type=verification_type.value,
         immediate_parent=immediate_parent,
         timestamp=timestamp_token,
@@ -63,12 +67,8 @@ def build_report_filename(
     )
 
 
-def _worksheet_name(verification_type: VerificationType) -> str:
-    if verification_type == VerificationType.GDI:
-        return "GDI Verification"
-    if verification_type == VerificationType.HSAB:
-        return "HSAB Verification"
-    return f"{verification_type.value} Verification"
+def _worksheet_name(solution_type: SolutionType, verification_type: VerificationType) -> str:
+    return f"{solution_type.value} {verification_type.value} Verification"
 
 
 def _status_fill(status: VerificationStatus, colors: dict[str, str]) -> PatternFill:
@@ -83,12 +83,13 @@ def _status_fill(status: VerificationStatus, colors: dict[str, str]) -> PatternF
 
 def _write_detail_sheet(
     workbook: Workbook,
+    solution_type: SolutionType,
     verification_type: VerificationType,
     rows: list[ReportRow],
     report_config: ReportConfig,
 ) -> Worksheet:
     sheet = workbook.active
-    sheet.title = _worksheet_name(verification_type)
+    sheet.title = _worksheet_name(solution_type, verification_type)
 
     header_font = Font(bold=True)
     wrap_alignment = Alignment(wrap_text=True, vertical="top")
@@ -101,6 +102,7 @@ def _write_detail_sheet(
 
     for row_index, report_row in enumerate(rows, start=2):
         values = [
+            report_row.solution_type,
             report_row.verification_type,
             report_row.scenario,
             report_row.run_type,
@@ -112,11 +114,11 @@ def _write_detail_sheet(
         ]
         for column_index, value in enumerate(values, start=1):
             cell = sheet.cell(row=row_index, column=column_index, value=value)
-            if column_index == 8:
+            if column_index == 9:
                 cell.alignment = wrap_alignment
             else:
                 cell.alignment = top_alignment
-            if column_index == 7:
+            if column_index == 8:
                 cell.fill = _status_fill(report_row.status, report_config.status_colors)
 
     sheet.freeze_panes = "A2"
@@ -133,6 +135,7 @@ def _write_summary_sheet(workbook: Workbook, summary: ExecutionSummary) -> Works
     header_font = Font(bold=True)
 
     rows = [
+        ("Solution type", summary.solution_type.value),
         ("Verification type", summary.verification_type.value),
         (
             "Execution start time",
@@ -179,6 +182,7 @@ class ExcelReporter:
         ensure_directory(report_config.output_folder)
         filename = build_report_filename(
             report_config,
+            summary.solution_type,
             summary.verification_type,
             immediate_parent,
             timestamp,
@@ -189,6 +193,7 @@ class ExcelReporter:
         workbook = Workbook()
         _write_detail_sheet(
             workbook,
+            summary.solution_type,
             summary.verification_type,
             summary.report_rows,
             report_config,

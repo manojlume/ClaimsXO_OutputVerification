@@ -10,14 +10,28 @@ from lxml import etree
 
 from output_verifier.constants import (
     HEX_COLOR_PATTERN,
-    SOLUTION_TYPE,
+    SolutionType,
     VALID_LOG_LEVELS,
     VerificationType,
+    allowed_verification_types,
 )
 
 
 class ConfigurationError(Exception):
     """Raised when configuration is invalid or cannot be applied."""
+
+
+def parse_solution_type(value: Any) -> SolutionType:
+    """Parse and validate a solution type string."""
+    if not isinstance(value, str) or not value.strip():
+        raise ConfigurationError("solution_type is required and must be a string.")
+    normalized = value.strip()
+    try:
+        return SolutionType(normalized)
+    except ValueError as error:
+        raise ConfigurationError(
+            f"Unsupported solution type: {value}. Supported values: ClaimsXO, EnrollmentXO."
+        ) from error
 
 
 def parse_verification_type(value: str) -> VerificationType:
@@ -27,17 +41,22 @@ def parse_verification_type(value: str) -> VerificationType:
         return VerificationType(normalized)
     except ValueError as error:
         raise ConfigurationError(
-            f"Unsupported verification type: {value}. Supported values: GDI, HSAB."
+            f"Unsupported verification type: {value}. Supported values: ABG, GDI, HSAB."
         ) from error
 
 
-def validate_solution_type(value: Any) -> str:
-    """Validate that solution_type is ClaimsXO."""
-    if value != SOLUTION_TYPE:
+def validate_solution_verification_pair(
+    solution_type: SolutionType,
+    verification_type: VerificationType,
+) -> None:
+    """Ensure verification type is allowed for the selected solution."""
+    allowed = allowed_verification_types(solution_type)
+    if verification_type not in allowed:
+        allowed_names = ", ".join(sorted(item.value for item in allowed))
         raise ConfigurationError(
-            f"solution_type must be '{SOLUTION_TYPE}', found: {value!r}."
+            f"Unsupported verification type {verification_type.value} for "
+            f"solution {solution_type.value}. Allowed: {allowed_names}."
         )
-    return str(value)
 
 
 def validate_hex_color(color_name: str, value: Any) -> str:
@@ -80,13 +99,11 @@ def validate_non_negative_integer(field_name: str, value: Any) -> int:
 def validate_timestamp_format(value: Any) -> str:
     """Validate that a timestamp format string is usable by datetime.strftime."""
     if not isinstance(value, str) or not value.strip():
-        raise ConfigurationError(f"report.timestamp_format must be a non-empty string.")
+        raise ConfigurationError("report.timestamp_format must be a non-empty string.")
     try:
         datetime.now().strftime(value)
     except (ValueError, TypeError) as error:
-        raise ConfigurationError(
-            f"Invalid report.timestamp_format: {value!r}."
-        ) from error
+        raise ConfigurationError(f"Invalid report.timestamp_format: {value!r}.") from error
     return value
 
 
@@ -104,19 +121,19 @@ def validate_string_list(field_name: str, value: Any) -> tuple[str, ...]:
     return tuple(result)
 
 
-def validate_mbi_field_positions(value: Any) -> tuple[int, ...]:
-    """Validate one-based MBI ignore field positions."""
+def validate_field_positions(field_name: str, value: Any) -> tuple[int, ...]:
+    """Validate one-based ignore field positions."""
     if value is None:
         return ()
     if not isinstance(value, list):
-        raise ConfigurationError("ignore_rules.GDI.mbi_field_positions must be a list of integers.")
+        raise ConfigurationError(f"{field_name} must be a list of integers.")
 
     positions: list[int] = []
     seen: set[int] = set()
     for item in value:
         if not isinstance(item, int) or isinstance(item, bool) or item <= 0:
             raise ConfigurationError(
-                f"Invalid MBI ignored field position: {item!r}. "
+                f"Invalid ignored field position in {field_name}: {item!r}. "
                 "Positions must be positive integers (one-based)."
             )
         if item in seen:
@@ -124,6 +141,11 @@ def validate_mbi_field_positions(value: Any) -> tuple[int, ...]:
         seen.add(item)
         positions.append(item)
     return tuple(positions)
+
+
+def validate_mbi_field_positions(value: Any) -> tuple[int, ...]:
+    """Validate one-based MBI ignore field positions."""
+    return validate_field_positions("ignore_rules.*.mbi_field_positions", value)
 
 
 def validate_xpath_list(field_name: str, paths: tuple[str, ...]) -> tuple[str, ...]:

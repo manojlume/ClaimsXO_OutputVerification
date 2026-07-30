@@ -149,7 +149,7 @@ def test_invalid_mbi_position(tmp_path: Path) -> None:
     actual.mkdir()
     data = _base_config(expected, actual)
     data["ignore_rules"]["GDI"]["mbi_field_positions"] = [0]
-    with pytest.raises(ConfigurationError, match="MBI ignored field position"):
+    with pytest.raises(ConfigurationError, match="Invalid ignored field position"):
         build_resolved_config(data)
 
 

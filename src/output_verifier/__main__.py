@@ -25,6 +25,7 @@ def print_console_summary(summary: ExecutionSummary) -> None:
     """Print the end-of-run console summary."""
     report_display = str(summary.report_path) if summary.report_path else ""
     print()
+    print(f"Solution Type     : {summary.solution_type.value}")
     print(f"Verification Type : {summary.verification_type.value}")
     print(f"Compared Files    : {summary.compared_files_count}")
     print(f"Passed            : {summary.passed_count}")
@@ -46,16 +47,25 @@ def run(argv: list[str] | None = None) -> int:
     try:
         arguments = parse_arguments(argv)
     except SystemExit as error:
-        # argparse already printed help/error.
         code = error.code if isinstance(error.code, int) else ExitCode.SYSTEM_ERROR.value
         return code if code is not None else ExitCode.SYSTEM_ERROR.value
 
     config_path = config_path_from_args(arguments)
     execution_start = datetime.now()
 
+    solution_override = arguments.solution_type
+    if isinstance(solution_override, str):
+        # Normalize casing for enum parse (ClaimsXO / EnrollmentXO).
+        lowered = solution_override.lower()
+        if lowered == "claimsxo":
+            solution_override = "ClaimsXO"
+        elif lowered == "enrollmentxo":
+            solution_override = "EnrollmentXO"
+
     try:
         resolved = load_resolved_config(
             config_path,
+            solution_type_override=solution_override,
             verification_type_override=arguments.verification_type,
             expected_parent_folder_override=arguments.expected_parent_folder,
             actual_parent_folder_override=arguments.actual_parent_folder,
@@ -66,7 +76,7 @@ def run(argv: list[str] | None = None) -> int:
     except ConfigurationError as error:
         print_system_error(str(error))
         return ExitCode.SYSTEM_ERROR.value
-    except Exception as error:  # noqa: BLE001 - top-level system guard
+    except Exception as error:  # noqa: BLE001
         print_system_error(f"Unexpected configuration error: {error}")
         return ExitCode.SYSTEM_ERROR.value
 
@@ -76,6 +86,7 @@ def run(argv: list[str] | None = None) -> int:
     try:
         setup_logging(
             resolved.logging,
+            solution_type=resolved.solution_type,
             verification_type=resolved.verification_type,
             immediate_parent=immediate_parent,
             timestamp_token=timestamp_token,
@@ -86,19 +97,20 @@ def run(argv: list[str] | None = None) -> int:
 
     LOGGER.info("Application start: %s v%s", APPLICATION_NAME, APPLICATION_VERSION)
     LOGGER.info("Package version: %s", __version__)
+    LOGGER.info("Resolved solution_type=%s", resolved.solution_type.value)
     LOGGER.info("Resolved verification_type=%s", resolved.verification_type.value)
     LOGGER.info("Expected root=%s", resolved.expected_parent_folder)
     LOGGER.info("Actual root=%s", resolved.actual_parent_folder)
     LOGGER.info("Immediate actual parent folder=%s", immediate_parent)
     LOGGER.info(
-        "Resolved configuration: solution_type=%s report_folder=%s log_folder=%s log_level=%s",
-        resolved.solution_type,
+        "Resolved configuration: report_folder=%s log_folder=%s log_level=%s",
         resolved.report.output_folder,
         resolved.logging.output_folder,
         resolved.logging.level,
     )
 
     summary = ExecutionSummary(
+        solution_type=resolved.solution_type,
         verification_type=resolved.verification_type,
         execution_start_time=execution_start,
         execution_end_time=None,
@@ -140,7 +152,6 @@ def run(argv: list[str] | None = None) -> int:
         print_system_error(str(error))
         return ExitCode.SYSTEM_ERROR.value
     except ValueError as error:
-        # Invalid XPath surfaced from XML comparator is treated as system/config error.
         LOGGER.error("System error during verification: %s", error, exc_info=True)
         print_system_error(str(error))
         return ExitCode.SYSTEM_ERROR.value

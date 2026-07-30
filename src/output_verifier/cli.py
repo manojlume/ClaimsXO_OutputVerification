@@ -31,8 +31,8 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="output_verifier",
         description=(
-            "ClaimsXO output verification utility. Compares Expected Output files "
-            "against Actual Output files after a QA regression run."
+            "Output verification utility for ClaimsXO and EnrollmentXO. "
+            "Compares Expected Output files against Actual Output files after a QA run."
         ),
     )
     parser.add_argument(
@@ -45,9 +45,14 @@ def build_argument_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--solution-type",
+        choices=["ClaimsXO", "EnrollmentXO", "claimsxo", "enrollmentxo"],
+        help="Override solution_type from YAML (ClaimsXO or EnrollmentXO).",
+    )
+    parser.add_argument(
         "--verification-type",
-        choices=["GDI", "HSAB", "gdi", "hsab"],
-        help="Override verification_type from YAML (GDI or HSAB).",
+        choices=["ABG", "GDI", "HSAB", "abg", "gdi", "hsab"],
+        help="Override verification_type from YAML (ABG, GDI, or HSAB).",
     )
     parser.add_argument(
         "--expected-parent-folder",

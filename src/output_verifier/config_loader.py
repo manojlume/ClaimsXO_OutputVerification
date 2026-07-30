@@ -12,14 +12,15 @@ import yaml
 from output_verifier.config import (
     ConfigurationError,
     ensure_creatable_directory,
+    parse_solution_type,
     parse_verification_type,
     require_existing_directory,
+    validate_field_positions,
     validate_hex_color,
     validate_log_level,
-    validate_mbi_field_positions,
     validate_non_negative_integer,
     validate_positive_integer,
-    validate_solution_type,
+    validate_solution_verification_pair,
     validate_string_list,
     validate_timestamp_format,
     validate_xpath_list,
@@ -36,6 +37,7 @@ LOGGER = logging.getLogger(__name__)
 DEFAULT_REPORT: dict[str, Any] = {
     "output_folder": "./reports",
     "base_file_name": "VerificationReport",
+    "include_solution_type": True,
     "include_verification_type": True,
     "include_timestamp": True,
     "timestamp_format": "%Y%m%d%H%M%S",
@@ -89,10 +91,143 @@ def _merge_section(defaults: dict[str, Any], overrides: dict[str, Any] | None) -
     return merged
 
 
+def _as_mapping(value: Any, field_name: str) -> dict[str, Any]:
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise ConfigurationError(f"{field_name} must be a mapping.")
+    return value
+
+
+def _warn_duplicate_positions(field_name: str, raw_value: Any, unique_positions: tuple[int, ...]) -> None:
+    if isinstance(raw_value, list) and len(set(raw_value)) < len(raw_value):
+        LOGGER.warning(
+            "Duplicate ignored field positions in %s were de-duplicated: %s -> %s",
+            field_name,
+            raw_value,
+            list(unique_positions),
+        )
+
+
+def _parse_ignore_rules(ignore_rules_raw: dict[str, Any]) -> IgnoreRulesConfig:
+    claims_section = _as_mapping(ignore_rules_raw.get("ClaimsXO"), "ignore_rules.ClaimsXO")
+    enrollment_section = _as_mapping(
+        ignore_rules_raw.get("EnrollmentXO"),
+        "ignore_rules.EnrollmentXO",
+    )
+
+    # Temporary backward compatibility for old ClaimsXO top-level GDI/HSAB keys.
+    legacy_gdi = ignore_rules_raw.get("GDI")
+    legacy_hsab = ignore_rules_raw.get("HSAB")
+    if legacy_gdi is not None or legacy_hsab is not None:
+        LOGGER.warning(
+            "Old ignore_rules structure is deprecated. "
+            "Please move rules under ignore_rules.ClaimsXO."
+        )
+        if not claims_section:
+            claims_section = {}
+        if legacy_gdi is not None and "GDI" not in claims_section:
+            claims_section["GDI"] = legacy_gdi
+        if legacy_hsab is not None and "HSAB" not in claims_section:
+            claims_section["HSAB"] = legacy_hsab
+
+    claims_gdi = _as_mapping(claims_section.get("GDI"), "ignore_rules.ClaimsXO.GDI")
+    claims_hsab = _as_mapping(claims_section.get("HSAB"), "ignore_rules.ClaimsXO.HSAB")
+    enrollment_abg = _as_mapping(enrollment_section.get("ABG"), "ignore_rules.EnrollmentXO.ABG")
+    enrollment_gdi = _as_mapping(enrollment_section.get("GDI"), "ignore_rules.EnrollmentXO.GDI")
+    enrollment_hsab = _as_mapping(enrollment_section.get("HSAB"), "ignore_rules.EnrollmentXO.HSAB")
+
+    claims_gdi_mbi_raw = claims_gdi.get("mbi_field_positions")
+    claims_gdi_mbi = validate_field_positions(
+        "ignore_rules.ClaimsXO.GDI.mbi_field_positions",
+        claims_gdi_mbi_raw,
+    )
+    _warn_duplicate_positions(
+        "ignore_rules.ClaimsXO.GDI.mbi_field_positions",
+        claims_gdi_mbi_raw,
+        claims_gdi_mbi,
+    )
+
+    abg_mbi_raw = enrollment_abg.get("alegeus_mbi_field_positions")
+    abg_mbi = validate_field_positions(
+        "ignore_rules.EnrollmentXO.ABG.alegeus_mbi_field_positions",
+        abg_mbi_raw,
+    )
+    _warn_duplicate_positions(
+        "ignore_rules.EnrollmentXO.ABG.alegeus_mbi_field_positions",
+        abg_mbi_raw,
+        abg_mbi,
+    )
+
+    gdi_wex_raw = enrollment_gdi.get("wexhealth_field_positions")
+    gdi_wex = validate_field_positions(
+        "ignore_rules.EnrollmentXO.GDI.wexhealth_field_positions",
+        gdi_wex_raw,
+    )
+    _warn_duplicate_positions(
+        "ignore_rules.EnrollmentXO.GDI.wexhealth_field_positions",
+        gdi_wex_raw,
+        gdi_wex,
+    )
+
+    hsab_import_raw = enrollment_hsab.get("enrollment_import_field_positions")
+    hsab_import = validate_field_positions(
+        "ignore_rules.EnrollmentXO.HSAB.enrollment_import_field_positions",
+        hsab_import_raw,
+    )
+    _warn_duplicate_positions(
+        "ignore_rules.EnrollmentXO.HSAB.enrollment_import_field_positions",
+        hsab_import_raw,
+        hsab_import,
+    )
+
+    return IgnoreRulesConfig(
+        claims_gdi_lh1_xml_paths=validate_xpath_list(
+            "ignore_rules.ClaimsXO.GDI.lh1_xml_paths",
+            validate_string_list(
+                "ignore_rules.ClaimsXO.GDI.lh1_xml_paths",
+                claims_gdi.get("lh1_xml_paths"),
+            ),
+        ),
+        claims_gdi_manual_csv_columns=validate_string_list(
+            "ignore_rules.ClaimsXO.GDI.manual_csv_columns",
+            claims_gdi.get("manual_csv_columns"),
+        ),
+        claims_gdi_patient_manual_csv_columns=validate_string_list(
+            "ignore_rules.ClaimsXO.GDI.patient_manual_csv_columns",
+            claims_gdi.get("patient_manual_csv_columns"),
+        ),
+        claims_gdi_mbi_field_positions=claims_gdi_mbi,
+        claims_hsab_wex_xml_paths=validate_xpath_list(
+            "ignore_rules.ClaimsXO.HSAB.wex_xml_paths",
+            validate_string_list(
+                "ignore_rules.ClaimsXO.HSAB.wex_xml_paths",
+                claims_hsab.get("wex_xml_paths"),
+            ),
+        ),
+        enrollment_abg_alegeus_mbi_field_positions=abg_mbi,
+        enrollment_abg_report_csv_columns=validate_string_list(
+            "ignore_rules.EnrollmentXO.ABG.report_csv_columns",
+            enrollment_abg.get("report_csv_columns"),
+        ),
+        enrollment_gdi_wexhealth_field_positions=gdi_wex,
+        enrollment_gdi_report_csv_columns=validate_string_list(
+            "ignore_rules.EnrollmentXO.GDI.report_csv_columns",
+            enrollment_gdi.get("report_csv_columns"),
+        ),
+        enrollment_hsab_enrollment_import_field_positions=hsab_import,
+        enrollment_hsab_report_csv_columns=validate_string_list(
+            "ignore_rules.EnrollmentXO.HSAB.report_csv_columns",
+            enrollment_hsab.get("report_csv_columns"),
+        ),
+    )
+
+
 def build_resolved_config(
     yaml_data: dict[str, Any],
     *,
     config_path: Path | None = None,
+    solution_type_override: str | None = None,
     verification_type_override: str | None = None,
     expected_parent_folder_override: str | None = None,
     actual_parent_folder_override: str | None = None,
@@ -103,7 +238,12 @@ def build_resolved_config(
     """Build a resolved configuration model from YAML and CLI overrides."""
     data = copy.deepcopy(yaml_data)
 
-    solution_type = validate_solution_type(data.get("solution_type", "ClaimsXO"))
+    solution_raw = (
+        solution_type_override
+        if solution_type_override is not None
+        else data.get("solution_type", "ClaimsXO")
+    )
+    solution_type = parse_solution_type(solution_raw)
 
     verification_type_raw = (
         verification_type_override
@@ -113,6 +253,7 @@ def build_resolved_config(
     if not verification_type_raw:
         raise ConfigurationError("verification_type is required.")
     verification_type = parse_verification_type(str(verification_type_raw))
+    validate_solution_verification_pair(solution_type, verification_type)
 
     expected_raw = (
         expected_parent_folder_override
@@ -171,41 +312,9 @@ def build_resolved_config(
     ignore_rules_raw = data.get("ignore_rules") or {}
     if not isinstance(ignore_rules_raw, dict):
         raise ConfigurationError("ignore_rules must be a mapping.")
+    ignore_rules = _parse_ignore_rules(ignore_rules_raw)
 
-    gdi_rules = ignore_rules_raw.get("GDI") or {}
-    hsab_rules = ignore_rules_raw.get("HSAB") or {}
-    if not isinstance(gdi_rules, dict):
-        raise ConfigurationError("ignore_rules.GDI must be a mapping.")
-    if not isinstance(hsab_rules, dict):
-        raise ConfigurationError("ignore_rules.HSAB must be a mapping.")
-
-    gdi_lh1_xml_paths = validate_xpath_list(
-        "ignore_rules.GDI.lh1_xml_paths",
-        validate_string_list("ignore_rules.GDI.lh1_xml_paths", gdi_rules.get("lh1_xml_paths")),
-    )
-    hsab_wex_xml_paths = validate_xpath_list(
-        "ignore_rules.HSAB.wex_xml_paths",
-        validate_string_list("ignore_rules.HSAB.wex_xml_paths", hsab_rules.get("wex_xml_paths")),
-    )
-    manual_csv_columns = validate_string_list(
-        "ignore_rules.GDI.manual_csv_columns",
-        gdi_rules.get("manual_csv_columns"),
-    )
-    patient_manual_csv_columns = validate_string_list(
-        "ignore_rules.GDI.patient_manual_csv_columns",
-        gdi_rules.get("patient_manual_csv_columns"),
-    )
-    mbi_positions_raw = gdi_rules.get("mbi_field_positions")
-    mbi_field_positions = validate_mbi_field_positions(mbi_positions_raw)
-    if isinstance(mbi_positions_raw, list):
-        unique_count = len(set(mbi_positions_raw))
-        if unique_count < len(mbi_positions_raw):
-            LOGGER.warning(
-                "Duplicate MBI ignored field positions were de-duplicated: %s",
-                mbi_positions_raw,
-            )
-
-    resolved = ResolvedConfig(
+    return ResolvedConfig(
         solution_type=solution_type,
         verification_type=verification_type,
         expected_parent_folder=expected_parent.resolve()
@@ -215,6 +324,7 @@ def build_resolved_config(
         report=ReportConfig(
             output_folder=report_output_folder,
             base_file_name=str(report_section.get("base_file_name", "VerificationReport")),
+            include_solution_type=bool(report_section.get("include_solution_type", True)),
             include_verification_type=bool(report_section.get("include_verification_type", True)),
             include_timestamp=bool(report_section.get("include_timestamp", True)),
             timestamp_format=validate_timestamp_format(
@@ -238,21 +348,15 @@ def build_resolved_config(
                 logging_section.get("backup_count", 5),
             ),
         ),
-        ignore_rules=IgnoreRulesConfig(
-            gdi_lh1_xml_paths=gdi_lh1_xml_paths,
-            gdi_manual_csv_columns=manual_csv_columns,
-            gdi_patient_manual_csv_columns=patient_manual_csv_columns,
-            gdi_mbi_field_positions=mbi_field_positions,
-            hsab_wex_xml_paths=hsab_wex_xml_paths,
-        ),
+        ignore_rules=ignore_rules,
         config_path=config_path,
     )
-    return resolved
 
 
 def load_resolved_config(
     config_path: Path,
     *,
+    solution_type_override: str | None = None,
     verification_type_override: str | None = None,
     expected_parent_folder_override: str | None = None,
     actual_parent_folder_override: str | None = None,
@@ -265,6 +369,7 @@ def load_resolved_config(
     return build_resolved_config(
         yaml_data,
         config_path=config_path,
+        solution_type_override=solution_type_override,
         verification_type_override=verification_type_override,
         expected_parent_folder_override=expected_parent_folder_override,
         actual_parent_folder_override=actual_parent_folder_override,

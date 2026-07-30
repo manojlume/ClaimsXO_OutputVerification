@@ -1,4 +1,4 @@
-# ClaimsXO Output Verifier — Function Guide
+# ClaimsXO / EnrollmentXO Output Verifier — Function Guide
 
 **Package:** `output_verifier`  
 **Purpose:** Module-by-module reference of public classes and functions in the current codebase.
@@ -49,7 +49,7 @@ Command-line argument parsing and default config path resolution.
 | --- | --- | --- |
 | `application_directory` | `() -> Path` | Directory containing the running app. Frozen exe → folder of `sys.executable`. Source run → `Path.cwd()`. |
 | `default_config_path` | `() -> Path` | Returns `{application_directory()}/config.yaml`. |
-| `build_argument_parser` | `() -> argparse.ArgumentParser` | Builds parser with `--config`, `--verification-type`, `--expected-parent-folder`, `--actual-parent-folder`, `--report-output-folder`, `--log-level`. |
+| `build_argument_parser` | `() -> argparse.ArgumentParser` | Builds parser with `--config`, `--solution-type`, `--verification-type`, `--expected-parent-folder`, `--actual-parent-folder`, `--report-output-folder`, `--log-level`. |
 | `parse_arguments` | `(argv: list[str] \| None = None) -> Namespace` | Parses CLI args (uses `sys.argv` when `argv` is None). |
 | `config_path_from_args` | `(arguments: Namespace) -> Path` | Returns `Path(arguments.config)`. |
 
@@ -63,7 +63,7 @@ Process orchestration for one verification run.
 
 | Function | Description |
 | --- | --- |
-| `print_console_summary(summary: ExecutionSummary) -> None` | Prints verification type, compared files, passed/failed/not verified, report path, exit code. |
+| `print_console_summary(summary: ExecutionSummary) -> None` | Prints solution type, verification type, compared files, passed/failed/not verified, report path, exit code. |
 | `print_system_error(message: str, exit_code: int = 2) -> None` | Prints concise stderr error + exit code for system failures. |
 | `run(argv: list[str] \| None = None) -> int` | Full application flow; returns process exit code. |
 | `main() -> None` | Calls `sys.exit(run())`. |
@@ -93,15 +93,16 @@ Application constants, enums, filename patterns, and TPA profile registry.
 | --- | --- |
 | `APPLICATION_NAME` | `"output-verifier"` |
 | `APPLICATION_VERSION` | `"1.0.0"` |
-| `SOLUTION_TYPE` | `"ClaimsXO"` |
 | `DATETIME_TOKEN` | `"<datetime>"` |
+| `RUNTIME_TIMESTAMP_TOKEN` | `"<runtime_timestamp>"` |
 | `DATETIME_DIGIT_COUNT` | `14` |
 | `DATETIME_PLACEHOLDER_PATTERN` | regex `\d{14}` |
 | `MAX_REPORTED_DIFFERENCES` | `2` |
 | `MAX_LOGGED_VALUE_LENGTH` | `200` |
-| `MBI_DELIMITER` | `"\|"` |
+| `MBI_DELIMITER` / `COMMA_DELIMITER` / `PIPE_DELIMITER` | Field separators |
 | `SUPPORTED_RUN_FOLDERS` | `current`, `pre`, `prepre`, `hold` |
-| `SUPPORTED_EXTENSIONS` | `.xml`, `.csv`, `.mbi` |
+| `CLAIMS_XO_EXTENSIONS` | `.xml`, `.csv`, `.mbi` |
+| `ENROLLMENT_XO_EXTENSIONS` | `.mbi`, `.txt`, `.csv` |
 | `OUTPUT_TYPE_CANONICAL` | lower-case folder name → `OutputType` |
 | `VALID_LOG_LEVELS` | standard logging level names |
 | `HEX_COLOR_PATTERN` | `#RRGGBB` validator |
@@ -110,11 +111,12 @@ Application constants, enums, filename patterns, and TPA profile registry.
 
 | Enum | Members |
 | --- | --- |
-| `VerificationType` | `GDI`, `HSAB` |
-| `OutputType` | `LH1`, `MANUAL` (`manual`), `ALG`, `WEX` |
+| `SolutionType` | `CLAIMS_XO` (`ClaimsXO`), `ENROLLMENT_XO` (`EnrollmentXO`) |
+| `VerificationType` | `ABG`, `GDI`, `HSAB` |
+| `OutputType` | `LH1`, `MANUAL`, `ALG`, `WEX`, `ALEGEUS`, `REPORTS`, `WEX_HEALTH`, `HSAB_ENROLLMENT_IMPORT` |
 | `RunType` | `CURRENT`, `PRE`, `PREPRE`, `HOLD` |
 | `VerificationStatus` | `PASSED`, `FAILED`, `NOT_VERIFIED` |
-| `FileFormat` | `XML`, `CSV`, `MBI` |
+| `FileFormat` | `XML`, `CSV`, `MBI`, `DELIMITED_TEXT` |
 | `ExitCode` | `SUCCESS=0`, `COMPARISON_FAILURE=1`, `SYSTEM_ERROR=2` |
 | `DifferenceType` | Element/attribute/text/child-count mismatch categories |
 
@@ -124,10 +126,14 @@ Application constants, enums, filename patterns, and TPA profile registry.
 
 | Field | Meaning |
 | --- | --- |
-| `pattern` | Compiled regex with 14-digit datetime capture |
-| `normalized_template` | Identity string using `<datetime>` |
+| `pattern` | Compiled regex (datetime and/or named identity groups) |
+| `normalized_template` | Identity string using `<datetime>` / `<runtime_timestamp>` |
 | `file_format` | `FileFormat` |
-| `ignore_rule_key` | Key into ignore-rule config (`lh1_xml_paths`, `manual_csv_columns`, …) |
+| `ignore_rule_key` | Key into ignore-rule config |
+| `delimiter` | Optional delimiter for delimited formats |
+| `has_header` | Whether first row is a header |
+| `uses_named_identity_groups` | EnrollmentXO-style identity templates |
+| `compare_trailing_empty_fields` | MBI/pipe trailing-empty behavior |
 
 #### `OutputFolderProfile` (frozen)
 
@@ -136,11 +142,13 @@ Application constants, enums, filename patterns, and TPA profile registry.
 | `output_type` | `OutputType` |
 | `filename_rules` | Tuple of `FilenameRule` |
 
-#### `TpaProfile` (frozen)
+#### `SolutionProfile` (frozen; alias `TpaProfile`)
 
 | Method / field | Description |
 | --- | --- |
+| `solution_type` | `SolutionType` |
 | `verification_type` | TPA |
+| `supported_extensions` | Allowed file extensions |
 | `output_folders` | Supported output folder profiles |
 | `supported_output_folder_names()` | Lower-case set of output folder names |
 | `find_filename_rule(output_type, filename)` | First matching rule or `None` |
@@ -149,10 +157,11 @@ Application constants, enums, filename patterns, and TPA profile registry.
 
 | Symbol | Description |
 | --- | --- |
-| `GDI_PROFILE` | GDI LH1/manual/ALG rules |
-| `HSAB_PROFILE` | HSAB WEX HB1/HB2 rules |
-| `TPA_PROFILES` | `dict[VerificationType, TpaProfile]` |
-| `get_tpa_profile(verification_type)` | Lookup helper; raises `ValueError` if unsupported |
+| `CLAIMS_XO_GDI_PROFILE` / `CLAIMS_XO_HSAB_PROFILE` | ClaimsXO profiles |
+| `ENROLLMENT_XO_ABG_PROFILE` / `ENROLLMENT_XO_GDI_PROFILE` / `ENROLLMENT_XO_HSAB_PROFILE` | EnrollmentXO profiles |
+| `SOLUTION_PROFILES` | Nested `dict[SolutionType, dict[VerificationType, SolutionProfile]]` |
+| `get_solution_profile(solution_type, verification_type)` | Lookup helper; raises `ValueError` if unsupported |
+| `allowed_verification_types(solution_type)` | Allowed TPAs for a solution |
 
 ### 4.5 Filename pattern constants
 
@@ -163,6 +172,8 @@ Application constants, enums, filename patterns, and TPA profile registry.
 | `GDI_MANUAL_PATIENT_PATTERN` | `GDI_MANUAL_PATIENT_<dt>.csv` |
 | `GDI_MBI_PATTERN` | `LumeLight.ClaimFeed.<dt>.mbi` |
 | `HSAB_HB1_PATTERN` / `HSAB_HB2_PATTERN` | WEX XML claims files |
+| `ABG_EXPORT_MBI_PATTERN` / `ABG_*_REPORT_PATTERN` | Enrollment ABG files |
+| `ENROLLMENT_GDI_*` / `ENROLLMENT_HSAB_*` | Enrollment GDI/HSAB files |
 
 ---
 
@@ -174,16 +185,16 @@ Application constants, enums, filename patterns, and TPA profile registry.
 | --- | --- |
 | `ReportConfig` | Report folder, base name, timestamp format, status colors |
 | `LoggingConfig` | Level, console/file flags, folder, rotation settings |
-| `IgnoreRulesConfig` | GDI/HSAB ignore lists + helper getters |
+| `IgnoreRulesConfig` | Nested ClaimsXO/EnrollmentXO ignore lists + helper getters |
 | `ResolvedConfig` | Complete resolved configuration for one run |
 
 #### `IgnoreRulesConfig` helpers
 
 | Method | Returns |
 | --- | --- |
-| `xml_paths_for(verification_type, ignore_rule_key)` | XML XPath ignore tuple |
-| `csv_columns_for(ignore_rule_key)` | CSV header names to ignore |
-| `mbi_field_positions()` | One-based MBI positions to ignore |
+| `xml_paths_for(solution_type, verification_type, ignore_rule_key)` | XML XPath ignore tuple |
+| `csv_columns_for(solution_type, verification_type, ignore_rule_key)` | CSV/header names to ignore |
+| `field_positions_for(solution_type, verification_type, ignore_rule_key)` | One-based field positions to ignore |
 
 ### Discovery / matching models
 
@@ -222,8 +233,9 @@ Validation helpers and `ConfigurationError`.
 | Symbol | Description |
 | --- | --- |
 | `ConfigurationError` | Raised for invalid/missing configuration |
-| `parse_verification_type(value)` | Parse `GDI`/`HSAB` (case-insensitive) |
-| `validate_solution_type(value)` | Must equal `ClaimsXO` |
+| `parse_solution_type(value)` | Parse `ClaimsXO`/`EnrollmentXO` |
+| `parse_verification_type(value)` | Parse `ABG`/`GDI`/`HSAB` (case-insensitive) |
+| `validate_solution_verification_pair(solution, verification)` | Ensure TPA is allowed for solution |
 | `validate_hex_color(color_name, value)` | `#RRGGBB` check |
 | `validate_log_level(value)` | Valid logging level name |
 | `validate_positive_integer(field_name, value)` | `> 0` |
@@ -257,6 +269,7 @@ YAML loading and resolution into `ResolvedConfig`.
 
 ### Notable `build_resolved_config` parameters
 
+- `solution_type_override`
 - `verification_type_override`
 - `expected_parent_folder_override`
 - `actual_parent_folder_override`
@@ -270,8 +283,8 @@ YAML loading and resolution into `ResolvedConfig`.
 
 | Function | Description |
 | --- | --- |
-| `build_log_filename(verification_type, immediate_parent, timestamp_token)` | Builds `VerificationLog_<type>_<parent>_<timestamp>.Log` |
-| `setup_logging(config, *, verification_type, immediate_parent, timestamp_token)` | Clears root handlers; adds console and/or rotating file handler; returns log path or `None` |
+| `build_log_filename(solution_type, verification_type, immediate_parent, timestamp_token)` | Builds `VerificationLog_<solution>_<type>_<parent>_<timestamp>.Log` |
+| `setup_logging(config, *, solution_type, verification_type, immediate_parent, timestamp_token)` | Clears root handlers; adds console and/or rotating file handler; returns log path or `None` |
 
 Log file is written under `LoggingConfig.output_folder`.
 
@@ -281,8 +294,8 @@ Log file is written under `LoggingConfig.output_folder`.
 
 | Function | Description |
 | --- | --- |
-| `discover_output_locations(root, verification_type)` | Returns `dict[ScenarioKey, Path]` of supported output folders under one root |
-| `build_scenario_inventory(expected_root, actual_root, verification_type)` | Union inventory as `list[DiscoveredOutput]` with file lists |
+| `discover_output_locations(root, solution_type, verification_type)` | Returns `dict[ScenarioKey, Path]` of supported output folders under one root |
+| `build_scenario_inventory(expected_root, actual_root, solution_type, verification_type)` | Union inventory as `list[DiscoveredOutput]` with file lists |
 
 ### Private helpers
 
@@ -309,7 +322,7 @@ Log file is written under `LoggingConfig.output_folder`.
 
 | Method | Description |
 | --- | --- |
-| `__init__(config: ResolvedConfig)` | Loads TPA profile and comparator instances |
+| `__init__(config: ResolvedConfig)` | Loads solution profile and comparator instances |
 | `run()` | Inventory → verify each → return `(list[ReportRow], ExitCode)` |
 
 ### Important private methods
@@ -319,9 +332,9 @@ Log file is written under `LoggingConfig.output_folder`.
 | `_verify_discovered_output` | Scenario-level missing/unexpected/empty + file matching |
 | `_rows_from_matched_pairs` | Count-mismatch row + per-pair rows |
 | `_compare_pair` | Missing/unexpected/invalid/content compare for one pair |
-| `_compare_content` | Dispatch to XML/CSV/MBI comparator |
+| `_compare_content` | Dispatch to XML/CSV/MBI/DelimitedText comparator |
 | `_build_comparison_options` | Map ignore_rule_key → `ComparisonOptions` |
-| `_build_issue_text` | Combine summary issue + Difference 1/2 text |
+| `_build_issue_text` | Combine summary issue + difference lines inside Issue |
 | `_scenario_row` / `_file_row` | Construct `ReportRow` |
 
 ---
@@ -371,22 +384,31 @@ Log file is written under `LoggingConfig.output_folder`.
 | `_read_mbi_records(path)` | Parse with `csv.reader(delimiter='\|')` preserving trailing empties |
 | `_remove_ignored_fields(records, ignored_positions)` | Drop one-based field positions |
 
----
+### 12.5 `comparators/delimited_text_comparator.py`
+
+Reusable EnrollmentXO comparator (also usable wherever `FileFormat.DELIMITED_TEXT` is configured).
+
+| Symbol | Description |
+| --- | --- |
+| `DelimitedTextComparator.compare(...)` | Compare delimited files with optional header |
+| `_read_records(path, delimiter)` | `csv.reader` with configured delimiter |
+| `_remove_ignored_columns` / `_remove_ignored_fields` | Header-column or one-based field ignores |
+| `_compare_with_header` / `_compare_without_header` | Row/field mismatch reporting (max 2 differences) |
 
 ## 13. `reporting/excel_reporter.py`
 
 | Symbol | Description |
 | --- | --- |
-| `DETAIL_HEADERS` | Column titles for detail sheet |
+| `DETAIL_HEADERS` | Column titles for detail sheet (includes Solution Type) |
 | `COLUMN_WIDTHS` | Sensible widths by column index |
-| `build_report_filename(report_config, verification_type, immediate_parent, timestamp)` | Builds `VerificationReport_<type>_<parent>_<timestamp>.xlsx` |
+| `build_report_filename(report_config, solution_type, verification_type, immediate_parent, timestamp)` | Builds `VerificationReport_<solution>_<type>_<parent>_<timestamp>.xlsx` |
 | `ExcelReporter.write_report(report_config, summary, *, immediate_parent, timestamp)` | Creates workbook under `report.output_folder` and returns path |
 
 ### Private helpers
 
 | Function | Description |
 | --- | --- |
-| `_worksheet_name` | `GDI Verification` / `HSAB Verification` |
+| `_worksheet_name` | `{Solution} {Verification} Verification` |
 | `_status_fill` | Background color from YAML status colors |
 | `_write_detail_sheet` | Header + rows + freeze + autofilter + wrap Issue |
 | `_write_summary_sheet` | Run metadata and counts |
@@ -399,13 +421,13 @@ Log file is written under `LoggingConfig.output_folder`.
 
 | Function | Description |
 | --- | --- |
-| `has_supported_extension(filename)` | `.xml` / `.csv` / `.mbi` check |
+| `has_supported_extension(filename, supported_extensions)` | Extension check against active profile |
 | `normalize_filename_identity(filename)` | Replace first 14-digit token with `<datetime>` |
-| `build_normalized_identity_from_rule(rule)` | Return `rule.normalized_template` |
+| `build_normalized_identity_from_rule(rule, filename)` | Template or named-group Enrollment identity |
 | `match_filename_rule(profile, output_type, filename)` | Profile lookup wrapper |
 | `is_supported_filename(profile, output_type, filename)` | Boolean pattern match |
 | `immediate_parent_folder_name(folder_path)` | `folder_path.name` (Actual run folder name) |
-| `build_run_artifact_filename(prefix, verification_type, immediate_parent, timestamp, extension)` | Shared naming for report/log artifacts |
+| `build_run_artifact_filename(prefix, solution_type, verification_type, immediate_parent, timestamp, extension)` | Shared naming for report/log artifacts |
 
 ### 14.2 `utilities/path_utils.py`
 
@@ -435,7 +457,7 @@ main()
      │    └─ for each DiscoveredOutput:
      │         ├─ match_files_for_output()
      │         │    └─ classify_file()
-     │         └─ XmlComparator / CsvComparator / MbiComparator.compare()
+     │         └─ XmlComparator / CsvComparator / MbiComparator / DelimitedTextComparator.compare()
      ├─ ExcelReporter.write_report()
      │    └─ build_report_filename()
      └─ print_console_summary()
@@ -457,7 +479,8 @@ These exact strings are emitted by `VerificationService` and appear in Excel:
 - `XML content mismatch`
 - `CSV content mismatch`
 - `MBI content mismatch`
-- Plus comparator-specific parsing errors (`XML parsing error: ...`, etc.)
+- Delimited-text mismatches (CSV-style issue text for headered files; field/row issues for headerless)
+- Plus comparator-specific parsing errors (`XML parsing error: ...`, `Delimited text parsing error: ...`, etc.)
 
 ---
 
@@ -465,7 +488,7 @@ These exact strings are emitted by `VerificationService` and appear in Excel:
 
 | If you need to change… | Edit… |
 | --- | --- |
-| Supported filename patterns | `constants.py` TPA profiles |
+| Supported filename patterns | `constants.py` solution profiles |
 | Run folder names | `RunType` / `SUPPORTED_RUN_FOLDERS` |
 | Discovery behavior | `folder_discovery.py` |
 | Matching / pairing rules | `file_matcher.py` |
@@ -473,6 +496,7 @@ These exact strings are emitted by `VerificationService` and appear in Excel:
 | XML compare / ignore behavior | `comparators/xml_comparator.py` |
 | CSV compare | `comparators/csv_comparator.py` |
 | MBI compare | `comparators/mbi_comparator.py` |
+| Delimited text compare | `comparators/delimited_text_comparator.py` |
 | Report columns / naming | `reporting/excel_reporter.py` |
 | Log naming | `logging_setup.py` |
 | YAML fields / validation | `config_loader.py` + `config.py` |

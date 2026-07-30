@@ -6,7 +6,7 @@ import logging
 from collections import defaultdict
 from pathlib import Path
 
-from output_verifier.constants import TpaProfile
+from output_verifier.constants import SolutionProfile
 from output_verifier.models import DiscoveredOutput, FileIdentity, MatchedFilePair
 from output_verifier.utilities.filename_utils import (
     build_normalized_identity_from_rule,
@@ -20,7 +20,7 @@ LOGGER = logging.getLogger(__name__)
 def classify_file(
     file_path: Path,
     discovered: DiscoveredOutput,
-    profile: TpaProfile,
+    profile: SolutionProfile,
 ) -> FileIdentity:
     """Classify a file into a normalized identity and optional format rule."""
     filename = file_path.name
@@ -35,18 +35,21 @@ def classify_file(
             is_valid_pattern=False,
         )
     return FileIdentity(
-        normalized_name=build_normalized_identity_from_rule(rule),
+        normalized_name=build_normalized_identity_from_rule(rule, filename),
         original_filename=filename,
         file_path=file_path,
         file_format=rule.file_format,
         ignore_rule_key=rule.ignore_rule_key,
         is_valid_pattern=True,
+        delimiter=rule.delimiter,
+        has_header=rule.has_header,
+        compare_trailing_empty_fields=rule.compare_trailing_empty_fields,
     )
 
 
 def match_files_for_output(
     discovered: DiscoveredOutput,
-    profile: TpaProfile,
+    profile: SolutionProfile,
 ) -> list[MatchedFilePair]:
     """
     Match expected and actual files for one scenario/run/output location.
@@ -97,6 +100,9 @@ def match_files_for_output(
                     file_format=reference.file_format,
                     ignore_rule_key=reference.ignore_rule_key,
                     is_valid_pattern=reference.is_valid_pattern,
+                    delimiter=reference.delimiter,
+                    has_header=reference.has_header,
+                    compare_trailing_empty_fields=reference.compare_trailing_empty_fields,
                 )
             )
 

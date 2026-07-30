@@ -7,7 +7,10 @@ from pathlib import Path
 from output_verifier.constants import GDI_PROFILE, HSAB_PROFILE, OutputType
 from output_verifier.file_matcher import match_files_for_output
 from output_verifier.models import DiscoveredOutput, ScenarioKey
-from output_verifier.utilities.filename_utils import normalize_filename_identity
+from output_verifier.utilities.filename_utils import (
+    build_normalized_identity_from_rule,
+    normalize_filename_identity,
+)
 
 
 def _scenario(output_type: OutputType = OutputType.LH1) -> ScenarioKey:

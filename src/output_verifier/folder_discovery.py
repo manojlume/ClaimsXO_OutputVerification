@@ -8,9 +8,10 @@ from pathlib import Path
 from output_verifier.constants import (
     OUTPUT_TYPE_CANONICAL,
     SUPPORTED_RUN_FOLDERS,
-    TpaProfile,
+    SolutionProfile,
+    SolutionType,
     VerificationType,
-    get_tpa_profile,
+    get_solution_profile,
 )
 from output_verifier.models import DiscoveredOutput, ScenarioKey
 from output_verifier.utilities.filename_utils import has_supported_extension
@@ -25,18 +26,21 @@ def _canonicalize_run_type(folder_name: str) -> str | None:
     return None
 
 
-def _canonicalize_output_type(folder_name: str, profile: TpaProfile):
+def _canonicalize_output_type(folder_name: str, profile: SolutionProfile):
     lowered = folder_name.lower()
     if lowered not in profile.supported_output_folder_names():
         return None
     return OUTPUT_TYPE_CANONICAL.get(lowered)
 
 
-def _collect_direct_files(folder: Path) -> tuple[Path, ...]:
+def _collect_direct_files(
+    folder: Path,
+    supported_extensions: frozenset[str],
+) -> tuple[Path, ...]:
     files: list[Path] = []
     try:
         for entry in sorted(folder.iterdir(), key=lambda item: item.name.lower()):
-            if entry.is_file() and has_supported_extension(entry.name):
+            if entry.is_file() and has_supported_extension(entry.name, supported_extensions):
                 files.append(entry)
     except OSError as error:
         LOGGER.error("Unable to read output folder %s: %s", folder, error)
@@ -45,6 +49,7 @@ def _collect_direct_files(folder: Path) -> tuple[Path, ...]:
 
 def discover_output_locations(
     root: Path,
+    solution_type: SolutionType,
     verification_type: VerificationType,
 ) -> dict[ScenarioKey, Path]:
     """
@@ -54,7 +59,7 @@ def discover_output_locations(
     run folder is treated as the scenario path. Only supported output folders
     directly under the run folder are considered.
     """
-    profile = get_tpa_profile(verification_type)
+    profile = get_solution_profile(solution_type, verification_type)
     discovered: dict[ScenarioKey, Path] = {}
 
     if not root.exists():
@@ -76,7 +81,6 @@ def discover_output_locations(
 
         parts = relative_to_root.parts
         if len(parts) < 2:
-            # Run folder itself is directly under root with no scenario path.
             scenario_path = ""
         else:
             scenario_path = "\\".join(parts[:-1])
@@ -103,7 +107,8 @@ def discover_output_locations(
                 continue
             discovered[scenario_key] = child
             LOGGER.debug(
-                "Discovered %s output folder: scenario=%s run=%s output=%s path=%s",
+                "Discovered %s/%s output folder: scenario=%s run=%s output=%s path=%s",
+                solution_type.value,
                 verification_type.value,
                 scenario_path,
                 run_type,
@@ -122,11 +127,13 @@ def discover_output_locations(
 def build_scenario_inventory(
     expected_root: Path,
     actual_root: Path,
+    solution_type: SolutionType,
     verification_type: VerificationType,
 ) -> list[DiscoveredOutput]:
     """Build a union inventory of Expected and Actual scenario output folders."""
-    expected_map = discover_output_locations(expected_root, verification_type)
-    actual_map = discover_output_locations(actual_root, verification_type)
+    profile = get_solution_profile(solution_type, verification_type)
+    expected_map = discover_output_locations(expected_root, solution_type, verification_type)
+    actual_map = discover_output_locations(actual_root, solution_type, verification_type)
 
     all_keys = sorted(
         set(expected_map.keys()) | set(actual_map.keys()),
@@ -137,8 +144,16 @@ def build_scenario_inventory(
     for scenario_key in all_keys:
         expected_folder = expected_map.get(scenario_key)
         actual_folder = actual_map.get(scenario_key)
-        expected_files = _collect_direct_files(expected_folder) if expected_folder else ()
-        actual_files = _collect_direct_files(actual_folder) if actual_folder else ()
+        expected_files = (
+            _collect_direct_files(expected_folder, profile.supported_extensions)
+            if expected_folder
+            else ()
+        )
+        actual_files = (
+            _collect_direct_files(actual_folder, profile.supported_extensions)
+            if actual_folder
+            else ()
+        )
         inventory.append(
             DiscoveredOutput(
                 scenario_key=scenario_key,

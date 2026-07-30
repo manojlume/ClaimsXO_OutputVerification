@@ -9,6 +9,7 @@ from pathlib import Path
 from output_verifier.constants import (
     FileFormat,
     OutputType,
+    SolutionType,
     VerificationStatus,
     VerificationType,
 )
@@ -20,6 +21,7 @@ class ReportConfig:
 
     output_folder: Path
     base_file_name: str
+    include_solution_type: bool
     include_verification_type: bool
     include_timestamp: bool
     timestamp_format: str
@@ -40,40 +42,104 @@ class LoggingConfig:
 
 @dataclass(frozen=True)
 class IgnoreRulesConfig:
-    """Resolved ignore rules for GDI and HSAB comparisons."""
+    """Resolved ignore rules grouped by solution and verification type."""
 
-    gdi_lh1_xml_paths: tuple[str, ...] = ()
-    gdi_manual_csv_columns: tuple[str, ...] = ()
-    gdi_patient_manual_csv_columns: tuple[str, ...] = ()
-    gdi_mbi_field_positions: tuple[int, ...] = ()
-    hsab_wex_xml_paths: tuple[str, ...] = ()
+    claims_gdi_lh1_xml_paths: tuple[str, ...] = ()
+    claims_gdi_manual_csv_columns: tuple[str, ...] = ()
+    claims_gdi_patient_manual_csv_columns: tuple[str, ...] = ()
+    claims_gdi_mbi_field_positions: tuple[int, ...] = ()
+    claims_hsab_wex_xml_paths: tuple[str, ...] = ()
+    enrollment_abg_alegeus_mbi_field_positions: tuple[int, ...] = ()
+    enrollment_abg_report_csv_columns: tuple[str, ...] = ()
+    enrollment_gdi_wexhealth_field_positions: tuple[int, ...] = ()
+    enrollment_gdi_report_csv_columns: tuple[str, ...] = ()
+    enrollment_hsab_enrollment_import_field_positions: tuple[int, ...] = ()
+    enrollment_hsab_report_csv_columns: tuple[str, ...] = ()
 
-    def xml_paths_for(self, verification_type: VerificationType, ignore_rule_key: str) -> tuple[str, ...]:
-        """Return configured XML ignore paths for a TPA ignore-rule key."""
+    def xml_paths_for(
+        self,
+        solution_type: SolutionType,
+        verification_type: VerificationType,
+        ignore_rule_key: str,
+    ) -> tuple[str, ...]:
+        """Return configured XML ignore paths for the active solution profile."""
+        if solution_type != SolutionType.CLAIMS_XO:
+            return ()
         if verification_type == VerificationType.GDI and ignore_rule_key == "lh1_xml_paths":
-            return self.gdi_lh1_xml_paths
+            return self.claims_gdi_lh1_xml_paths
         if verification_type == VerificationType.HSAB and ignore_rule_key == "wex_xml_paths":
-            return self.hsab_wex_xml_paths
+            return self.claims_hsab_wex_xml_paths
         return ()
 
-    def csv_columns_for(self, ignore_rule_key: str) -> tuple[str, ...]:
-        """Return configured CSV ignore columns for a filename rule key."""
-        if ignore_rule_key == "manual_csv_columns":
-            return self.gdi_manual_csv_columns
-        if ignore_rule_key == "patient_manual_csv_columns":
-            return self.gdi_patient_manual_csv_columns
+    def csv_columns_for(
+        self,
+        solution_type: SolutionType,
+        verification_type: VerificationType,
+        ignore_rule_key: str,
+    ) -> tuple[str, ...]:
+        """Return configured CSV ignore columns for the active profile."""
+        if solution_type == SolutionType.CLAIMS_XO and verification_type == VerificationType.GDI:
+            if ignore_rule_key == "manual_csv_columns":
+                return self.claims_gdi_manual_csv_columns
+            if ignore_rule_key == "patient_manual_csv_columns":
+                return self.claims_gdi_patient_manual_csv_columns
+            return ()
+        if solution_type == SolutionType.ENROLLMENT_XO:
+            if (
+                verification_type == VerificationType.ABG
+                and ignore_rule_key == "report_csv_columns"
+            ):
+                return self.enrollment_abg_report_csv_columns
+            if (
+                verification_type == VerificationType.GDI
+                and ignore_rule_key == "report_csv_columns"
+            ):
+                return self.enrollment_gdi_report_csv_columns
+            if (
+                verification_type == VerificationType.HSAB
+                and ignore_rule_key == "report_csv_columns"
+            ):
+                return self.enrollment_hsab_report_csv_columns
         return ()
 
-    def mbi_field_positions(self) -> tuple[int, ...]:
-        """Return configured one-based MBI field positions to ignore."""
-        return self.gdi_mbi_field_positions
+    def field_positions_for(
+        self,
+        solution_type: SolutionType,
+        verification_type: VerificationType,
+        ignore_rule_key: str,
+    ) -> tuple[int, ...]:
+        """Return configured one-based field positions to ignore."""
+        if solution_type == SolutionType.CLAIMS_XO:
+            if (
+                verification_type == VerificationType.GDI
+                and ignore_rule_key == "mbi_field_positions"
+            ):
+                return self.claims_gdi_mbi_field_positions
+            return ()
+        if solution_type == SolutionType.ENROLLMENT_XO:
+            if (
+                verification_type == VerificationType.ABG
+                and ignore_rule_key == "alegeus_mbi_field_positions"
+            ):
+                return self.enrollment_abg_alegeus_mbi_field_positions
+            if (
+                verification_type == VerificationType.GDI
+                and ignore_rule_key == "wexhealth_field_positions"
+            ):
+                return self.enrollment_gdi_wexhealth_field_positions
+            if (
+                verification_type == VerificationType.HSAB
+                and ignore_rule_key == "enrollment_import_field_positions"
+            ):
+                return self.enrollment_hsab_enrollment_import_field_positions
+        return ()
 
 
 @dataclass(frozen=True)
 class ResolvedConfig:
     """Fully resolved application configuration."""
 
-    solution_type: str
+    solution_type: SolutionType
     verification_type: VerificationType
     expected_parent_folder: Path
     actual_parent_folder: Path
@@ -118,7 +184,7 @@ class DiscoveredOutput:
 
 @dataclass(frozen=True)
 class FileIdentity:
-    """Normalized filename identity after datetime replacement."""
+    """Normalized filename identity after datetime/runtime replacement."""
 
     normalized_name: str
     original_filename: str
@@ -126,6 +192,9 @@ class FileIdentity:
     file_format: FileFormat | None
     ignore_rule_key: str | None
     is_valid_pattern: bool
+    delimiter: str | None = None
+    has_header: bool = False
+    compare_trailing_empty_fields: bool = True
 
 
 @dataclass(frozen=True)
@@ -139,6 +208,9 @@ class MatchedFilePair:
     file_format: FileFormat | None
     ignore_rule_key: str | None
     is_valid_pattern: bool
+    delimiter: str | None = None
+    has_header: bool = False
+    compare_trailing_empty_fields: bool = True
 
 
 @dataclass(frozen=True)
@@ -148,6 +220,11 @@ class ComparisonOptions:
     ignored_xml_paths: tuple[str, ...] = ()
     ignored_csv_columns: tuple[str, ...] = ()
     ignored_mbi_field_positions: tuple[int, ...] = ()
+    ignored_field_positions: tuple[int, ...] = ()
+    ignored_columns: tuple[str, ...] = ()
+    delimiter: str = ","
+    has_header: bool = False
+    compare_trailing_empty_fields: bool = True
 
 
 @dataclass(frozen=True)
@@ -174,6 +251,7 @@ class ComparisonResult:
 class ReportRow:
     """One Excel report row."""
 
+    solution_type: str
     verification_type: str
     scenario: str
     run_type: str
@@ -188,6 +266,7 @@ class ReportRow:
 class ExecutionSummary:
     """End-of-run summary used for console output and Excel Summary sheet."""
 
+    solution_type: SolutionType
     verification_type: VerificationType
     execution_start_time: datetime
     execution_end_time: datetime | None

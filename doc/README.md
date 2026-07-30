@@ -1,4 +1,4 @@
-# ClaimsXO Output Verifier — Documentation Index
+# ClaimsXO / EnrollmentXO Output Verifier — Documentation Index
 
 This folder contains detailed documentation for the **output-verifier** utility based on the current codebase.
 
@@ -9,23 +9,17 @@ This folder contains detailed documentation for the **output-verifier** utility 
 
 ## Quick context
 
-- **Product**: ClaimsXO Expected vs Actual output verification after QA regression
+- **Product**: Expected vs Actual output verification after QA regression
+- **Solutions**: ClaimsXO, EnrollmentXO
 - **Package**: `output_verifier` under `src/`
-- **Supported TPAs**: GDI, HSAB
-- **Formats**: XML (lxml), CSV (stdlib), MBI (pipe-delimited)
+- **ClaimsXO TPAs**: GDI, HSAB
+- **EnrollmentXO TPAs**: ABG, GDI, HSAB
+- **Formats**: XML (lxml), CSV, MBI, DelimitedText
 - **Outputs**: Excel report + rotating log file + console summary + exit code
-
-## Related project files
-
-| Path | Role |
-| --- | --- |
-| `README.md` | User-facing quick start |
-| `config.yaml` | External runtime configuration (not embedded in `.exe`) |
-| `prompt/ClaimsXO_ManualVerificationAfterQARun_WriteUp_Ver1.md` | Original requirements write-up |
 
 ## Recommended reading order for a new developer
 
 1. This index
-2. Developer Guide — sections 1–5 (purpose, architecture, business rules, run flow)
+2. Developer Guide — sections on purpose, architecture, business rules, run flow
 3. Function Guide — `verification_service`, `folder_discovery`, `file_matcher`, comparators
 4. Developer Guide — configuration, ignore rules, extending TPAs, tests
