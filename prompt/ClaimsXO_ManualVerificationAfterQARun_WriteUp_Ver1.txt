@@ -1,0 +1,324 @@
+===================
+Context
+===================
+There is a ClaimsXO solution used by multiple TPAs. Each TPA can generate different types of output files, and one scenario may generate more than one output file.
+Currently, this utility needs to support the following TPAs:
+	- GDI
+	- HSAB
+
+In future, more TPAs may be added.
+
+The QA run is already complete for all test cases. But the outputs have not been verified. Your job is to verify the outputs be comparing the actual results with the expected results for all the test cases/scenarios, and generate a QA report.
+
+The purpose of this utility is to compare the Actual Output files against the Expected Output files for every test scenario and generate a detailed Excel QA verification report.
+
+Folder Structure
+
+===================
+Expected Output Parent Folder
+===================
+The configured Expected Output parent folder will contain scenario folders in the following format: 
+<type><run_type><output_type>
+
+Rules:
+
+- <type> represents the test scenario path and may contain one or more nested subfolders.
+- <run_type> can be:
+  - current
+  - pre
+  - prepre
+- <output_type> contains the generated output files.
+- Output files may be:
+  - XML
+  - CSV
+  - MBI
+- Unrelated folders or unsupported files should be ignored.
+
+Example:
+test_aggregation\3\pre\LH1
+
+For this example:
+
+- Scenario: test_aggregation\3
+- Run Type: pre
+- Output Type: LH1
+
+
+================
+Actual Output Parent Folder
+================
+The configured Actual Output parent folder will follow the same folder structure:
+<type><run_type><output_type>
+Example: test_aggregation\3\pre\LH1
+
+Rules:
+
+- <type> may contain one or more nested subfolders.
+- <run_type> can be:
+  - current
+  - pre
+  - prepre
+- <output_type> contains the generated Actual Output files.
+- Unrelated folders or unsupported files should be ignored.
+
+Supported TPA Output Files
+
+---------
+GDI TPA
+---------
+
+GDI can generate the following output files.
+
+1. LH1 XML Files
+
+Supported filename patterns:
+
+- GDI_LH1_<datetime>.xml
+- GDI_LH1_MMS_<datetime>.xml
+- GDI_LH1_FLORES_<datetime>.xml
+- GDI_LH1_HNE_<datetime>.xml
+- GDI_REGEN_LH1_<datetime>.xml
+
+The <datetime> value will be in yyyyMMddHHmmss format.
+
+Example: GDI_LH1_20260730113045.xml
+
+2. MBI Pipe-Delimited File
+
+Filename pattern: LumeLight.ClaimFeed.<datetime>.mbi
+
+Example: LumeLight.ClaimFeed.20260730113045.mbi
+
+The MBI file:
+
+- Uses | as the delimiter.
+- Does not contain a header row.
+- Does not contain a trailer row.
+- May contain blank fields represented as ||.
+- May contain leading or trailing spaces inside field values.
+- May contain a trailing delimiter.
+- Record order does matter.
+
+3. Manual CSV Files
+
+The CSV files contain a header row.
+
+Claim Manual file pattern: GDI_MANUAL_<datetime>.csv
+
+Patient Manual file pattern:GDI_MANUAL_PATIENT_<datetime>.csv
+
+The Claim Manual and Patient Manual files have different layouts. The utility should compare the Expected and Actual CSV headers and data directly. 
+
+CSV values may contain:
+
+- Commas
+- Double quotes
+- Empty values
+- Leading or trailing spaces
+
+
+---------
+HSAB TPA
+---------
+
+
+HSAB generates WEX XML files.
+
+Supported filename patterns:
+
+- HB1_HSAB_CLAIMS_<datetime>.xml
+- HB2_HSAB_CLAIMS_<datetime>.xml
+
+Both HB1, HB2, HB3 etc. files:
+
+- Are stored in the same WEX folder.
+- Have the same XML format.
+- Use the same XML comparison rules.
+- Use the same ignored XML paths configured in YAML.
+
+The <datetime> value will be in yyyyMMddHHmmss format.
+
+==========
+Role
+==========
+
+Act as a senior QA Automation Engineer and Python developer.
+
+Design and develop a Python-based output verification utility that compares Actual Output files against Expected Output files for all available scenarios and generates a detailed Excel report.
+
+The solution should be reusable and should allow future TPAs and output formats to be added without major code changes.
+
+
+========
+Main Requirements
+========
+
+1. Compare Expected and Actual Files
+
+The utility should:
+
+- Scan all supported scenario folders.
+- Identify the scenario path.
+- Identify the run type.
+- Identify the output type.
+- Find the Expected and Actual files.
+- Match the correct Expected file with the correct Actual file.
+- Compare their filenames and content.
+- Generate one Excel report row for each compared file.
+
+2. File Matching
+
+Expected and Actual files should be sorted by filename before comparison.
+
+However, files should not be matched only by their complete filename because the datetime portion will be different.
+
+The utility should:
+
+- Identify the supported filename pattern.
+- Ignore the dynamic datetime portion while matching filenames.
+- Match files based on the remaining stable filename pattern.
+- Use sorting when multiple files have the same filename pattern.
+
+Examples:
+
+GDI_MANUAL_20260730110000.csv
+
+should match:
+
+GDI_MANUAL_20260730120000.csv
+
+Similarly:
+
+HB1_HSAB_CLAIMS_20260730110000.xml
+
+should match:
+
+HB1_HSAB_CLAIMS_20260730120000.xml
+
+The filename pattern itself must match.
+
+For example:
+
+HB1_HSAB_CLAIMS_<datetime>.xml
+
+must not be matched with:
+
+HB2_HSAB_CLAIMS_<datetime>.xml
+
+3. XML Comparison
+
+XML files must be parsed and compared structurally.
+
+Do not compare XML files as plain text.
+
+XML comparison rules:
+
+- Ignore only XML paths configured in YAML.
+- YAML ignore paths may point to:
+  - XML elements
+  - XML attributes
+
+Example ignored attribute:
+
+/LH1StandardClaimsExchange/@CreatedDateTime
+
+This should ignore only the CreatedDateTime attribute directly under the LH1StandardClaimsExchange node.
+
+The ignored XML paths must be configurable separately for:
+
+- GDI LH1 XML
+- HSAB WEX XML
+
+Both HSAB HB1 and HB2 files should use the same wex_xml_paths configuration.
+
+4. CSV Comparison
+
+CSV files must be parsed using a proper CSV parser.
+
+CSV comparison rules:
+
+- Compare header names.
+- Compare header order.
+- Compare row count.
+- Compare row order.
+- Compare all field values exactly.
+- Column order matters.
+- Leading and trailing spaces matter.
+- Fields may contain commas.
+- Fields may contain double quotes.
+- Ignore only columns configured in YAML.
+- No CSV columns are ignored by default.
+
+Claim Manual and Patient Manual files must use separate ignored-column configuration because they have different layouts.
+
+5. MBI Pipe-Delimited Comparison
+
+MBI files must be parsed as pipe-delimited files.
+
+Comparison rules:
+
+- Delimiter is always |.
+- No header row.
+- No trailer row.
+
+Ignored MBI fields should be configured using one-based field positions in YAML.
+If no ignored positions are configured, compare all fields.
+
+6. Missing and Unexpected Files
+
+Use the following rules:
+
+Expected file exists and Actual file exists:
+
+- Compare filename pattern.
+- Compare file content.
+- Status is Passed when both match.
+- Status is Failed when any difference is found.
+
+Expected file exists but Actual file is missing:
+
+- Status: Failed
+- Issue: Expected file missing
+
+Expected file does not exist but Actual file exists:
+
+- Status: Failed
+- Issue: Unexpected actual file
+
+Both Expected and Actual folders contain no supported files:
+
+- Status: NotVerified
+- Issue: No files available for verification
+
+Expected file count and Actual file count are different:
+
+- Status: Failed
+- Issue should specify the Expected and Actual file counts.
+
+7. Verification Statuses
+
+The final supported statuses are:
+
+- Passed
+- Failed
+- NotVerified
+
+Status rules:
+
+Passed:
+
+- Correct corresponding file found.
+- Filename pattern matches.
+- Content matches after applying configured ignore rules.
+
+Failed:
+
+- Expected file is missing.
+- File count is different.
+- Filename pattern is different.
+- File content is different.
+
+
+NotVerified:
+
+- Both Expected and Actual folders contain no supported files.

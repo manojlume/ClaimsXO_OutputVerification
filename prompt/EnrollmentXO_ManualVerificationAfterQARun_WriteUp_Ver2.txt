@@ -1,0 +1,201 @@
+===================
+Context
+===================
+There is an EnrollmentXO solution used by multiple TPAs. Each TPA can generate different types of output files, and one scenario may generate more than one output file.
+
+Currently, this utility needs to support the following TPAs:
+
+	- ABG
+	- GDI
+	- HSAB
+
+In future, more TPAs may be added.
+
+The QA run is already complete for all test cases. But the outputs have not been verified. Your job is to verify the outputs by comparing the Actual Output files with the Expected Output files for all test cases/scenarios and generate a QA report.
+
+The purpose of this utility is to compare the Actual Output files against the Expected Output files for every test scenario and generate a detailed Excel QA verification report.
+
+Folder Structure
+
+===================
+Expected Output Parent Folder
+===================
+The configured Expected Output parent folder will contain scenario folders in the following format:
+
+<type>\<run_type>\<output_type>
+
+Rules:
+
+- <type> represents the test scenario path and may contain one or more nested subfolders.
+- <run_type> can be:
+  - current
+  - pre
+- <output_type> contains the generated output files.
+- Output files may be:
+  - MBI
+  - TXT
+  - CSV
+- Unrelated folders or unsupported files should be ignored.
+
+Example:
+
+test_aggregation\3\pre\alegeus
+
+For this example:
+
+- Scenario: test_aggregation\3
+- Run Type: pre
+- Output Type: alegeus
+
+
+================
+Actual Output Parent Folder
+================
+The configured Actual Output parent folder will follow the same folder structure:
+
+<type>\<run_type>\<output_type>
+
+Example:
+
+test_aggregation\3\pre\alegeus
+
+Rules:
+
+- <type> may contain one or more nested subfolders.
+- <run_type> can be:
+  - current
+  - pre
+- <output_type> contains the generated Actual Output files.
+- Unrelated folders or unsupported files should be ignored.
+
+Run folder and output folder matching should be case-insensitive.
+
+Only files directly available inside a supported output folder should be processed. Subfolders inside the output folder should not be compared.
+
+Supported TPA Output Files
+
+---------
+ABG TPA
+---------
+
+ABG can generate the following output files.
+
+1. Alegeus MBI Files
+
+Output folder: alegeus
+
+Supported filename pattern: Export_<datetimestamp>_Cafeteria_XML_*.mbi
+
+Examples: Export_20260730141107524_Cafeteria_XML_20210301_0002.mbi
+
+The Alegeus MBI file:
+
+- Uses comma as the delimiter.
+- Does not contain a header row.
+- Does not contain a trailer row.
+- May contain blank fields.
+
+2. Report CSV Files
+
+Output folder: reports
+
+Supported filename patterns:
+- ExceptionReport_<datetimestamp>_Cafeteria_XML_*.csv
+- ChangeReport_<datetimestamp>_Cafeteria_XML_*.csv
+
+Examples:
+- ExceptionReport_20260730141402865_Cafeteria_XML_20210301_0036.csv
+- ChangeReport_20260730142250614_Cafeteria_XML_20210301_0045_after.csv
+
+The datetimestamp should be ignored during filename matching.
+
+---------
+GDI TPA
+---------
+
+GDI can generate the following output files.
+
+1. WexHealth Pipe-Delimited Files
+
+Output folder: WexHealth
+
+Supported filename pattern: GDI_WEXHealth_<datetimestamp>.txt
+
+Example: GDI_WEXHealth_20240710125335036.txt
+
+The datetimestamp should be ignored during filename matching.
+
+The WexHealth file:
+
+- Uses | as the delimiter.
+- Does not contain a header row.
+- Does not contain a trailer row.
+- May contain blank fields represented as ||.
+
+2. Report CSV Files
+
+Output folder: reports
+
+Supported filename patterns:
+
+- GDI_ChangeReport_GDI_EN_ALL_*.csv
+- GDI_ExceptionReport_GDI_EN_ALL_*.csv
+
+Examples:
+
+- GDI_ChangeReport_GDI_EN_ALL_12122022_after_20240710125331939.csv
+- GDI_ExceptionReport_GDI_EN_ALL_12122022_after_20240710125520447.csv
+
+The datetimestamp should be ignored during filename matching.
+
+---------
+HSAB TPA
+---------
+
+HSAB can generate the following output files.
+
+1. HSAB Enrollment Import Files
+
+Output folder: HSABEnrollmentImport
+
+Supported filename pattern: 202162_<filename>_<datetimestamp>.txt
+
+Examples:
+
+- 202162_PROD_WUT584_CollectiveHealth_394332_HSAB_Eligibility_20240101_061701_20260728230014069.txt
+
+The datetimestamp should be ignored during filename matching.
+
+
+The HSAB Enrollment Import file:
+
+- Uses comma as the delimiter.
+- Does not contain a header row.
+- Does not contain a trailer row.
+
+
+2. Report CSV Files
+
+Output folder: reports
+
+Supported filename patterns:
+
+- HSAB_ChangeReport_<filename>_<datetimestamp>.csv
+- HSAB_ExceptionReport_<filename>_<datetimestamp>.csv
+
+Examples:
+
+- HSAB_ChangeReport_PROD_WUT584_CollectiveHealth_394332_HSAB_Eligibility_20240101_061701_20260728230012020.csv
+- HSAB_ExceptionReport_PROD_UOM488_HSAB_FSAEligibility_20231212_013508_20260728230551464.csv
+
+The datetimestamp should be ignored during filename matching.
+==========
+Role
+==========
+
+Act as a senior QA Automation Engineer and Python developer.
+
+Add above requirement into existing  Python-based output verification utility that compares Actual Output files against Expected Output files for all available scenarios and generates a detailed Excel report.
+
+The solution should be reusable and should allow future TPAs and output formats to be added without major code changes.
+
