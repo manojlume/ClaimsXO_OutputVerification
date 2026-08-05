@@ -22,6 +22,49 @@ def _truncate(value: str) -> str:
     return value[:MAX_LOGGED_VALUE_LENGTH] + "...(truncated)"
 
 
+_LONG_VALUE_THRESHOLD = 40
+_CONTEXT_SNIPPET = 8
+
+
+def _value_mismatch_description(
+    excel_row_number: int,
+    column_name: str,
+    expected_value: str,
+    actual_value: str,
+) -> str:
+    """Build a safe cell mismatch description; use character position for long values."""
+    if (
+        len(expected_value) >= _LONG_VALUE_THRESHOLD
+        or len(actual_value) >= _LONG_VALUE_THRESHOLD
+    ):
+        limit = min(len(expected_value), len(actual_value))
+        position = 0
+        while position < limit and expected_value[position] == actual_value[position]:
+            position += 1
+        if position >= limit:
+            position = limit
+        end = position + 1
+        while (
+            end < limit
+            and expected_value[end] != actual_value[end]
+            and end - position < _CONTEXT_SNIPPET
+        ):
+            end += 1
+        expected_snippet = _truncate(expected_value[position:end] or expected_value[position : position + 1])
+        actual_snippet = _truncate(actual_value[position:end] or actual_value[position : position + 1])
+        one_based = position + 1
+        return (
+            f"Row: {excel_row_number}, Column: {column_name}, "
+            f"Character Position: {one_based}, "
+            f'Expected: "{expected_snippet}", Actual: "{actual_snippet}"'
+        )
+    return (
+        f"Row: {excel_row_number}, Column: {column_name}, "
+        f"Expected: {_truncate(expected_value)}, "
+        f"Actual: {_truncate(actual_value)}"
+    )
+
+
 def _read_csv_rows(path: Path) -> list[list[str]]:
     with path.open("r", encoding="utf-8-sig", newline="") as handle:
         reader = csv.reader(handle)
@@ -205,13 +248,14 @@ class CsvComparator:
                     )
                     differences.append(
                         ComparisonDifference(
-                            description=(
-                                f"Row: {excel_row_number}, Column: {column_name}, "
-                                f"Expected: {_truncate(expected_value)}, "
-                                f"Actual: {_truncate(actual_value)}"
+                            description=_value_mismatch_description(
+                                excel_row_number,
+                                column_name,
+                                expected_value,
+                                actual_value,
                             ),
-                            expected_value=expected_value,
-                            actual_value=actual_value,
+                            expected_value=_truncate(expected_value),
+                            actual_value=_truncate(actual_value),
                             location=f"row {excel_row_number} column {column_name}",
                         )
                     )

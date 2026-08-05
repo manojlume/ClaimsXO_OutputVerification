@@ -15,6 +15,7 @@ from output_verifier.config import (
     parse_solution_type,
     parse_verification_type,
     require_existing_directory,
+    validate_character_ranges,
     validate_field_positions,
     validate_hex_color,
     validate_log_level,
@@ -115,6 +116,10 @@ def _parse_ignore_rules(ignore_rules_raw: dict[str, Any]) -> IgnoreRulesConfig:
         ignore_rules_raw.get("EnrollmentXO"),
         "ignore_rules.EnrollmentXO",
     )
+    transaction_section = _as_mapping(
+        ignore_rules_raw.get("TransactionXO"),
+        "ignore_rules.TransactionXO",
+    )
 
     # Temporary backward compatibility for old ClaimsXO top-level GDI/HSAB keys.
     legacy_gdi = ignore_rules_raw.get("GDI")
@@ -136,6 +141,10 @@ def _parse_ignore_rules(ignore_rules_raw: dict[str, Any]) -> IgnoreRulesConfig:
     enrollment_abg = _as_mapping(enrollment_section.get("ABG"), "ignore_rules.EnrollmentXO.ABG")
     enrollment_gdi = _as_mapping(enrollment_section.get("GDI"), "ignore_rules.EnrollmentXO.GDI")
     enrollment_hsab = _as_mapping(enrollment_section.get("HSAB"), "ignore_rules.EnrollmentXO.HSAB")
+    transaction_hsab = _as_mapping(
+        transaction_section.get("HSAB"),
+        "ignore_rules.TransactionXO.HSAB",
+    )
 
     claims_gdi_mbi_raw = claims_gdi.get("mbi_field_positions")
     claims_gdi_mbi = validate_field_positions(
@@ -181,6 +190,11 @@ def _parse_ignore_rules(ignore_rules_raw: dict[str, Any]) -> IgnoreRulesConfig:
         hsab_import,
     )
 
+    mdc_ranges = validate_character_ranges(
+        "ignore_rules.TransactionXO.HSAB.mdc_ignored_character_ranges",
+        transaction_hsab.get("mdc_ignored_character_ranges"),
+    )
+
     return IgnoreRulesConfig(
         claims_gdi_lh1_xml_paths=validate_xpath_list(
             "ignore_rules.ClaimsXO.GDI.lh1_xml_paths",
@@ -219,6 +233,15 @@ def _parse_ignore_rules(ignore_rules_raw: dict[str, Any]) -> IgnoreRulesConfig:
         enrollment_hsab_report_csv_columns=validate_string_list(
             "ignore_rules.EnrollmentXO.HSAB.report_csv_columns",
             enrollment_hsab.get("report_csv_columns"),
+        ),
+        transaction_hsab_mdc_ignored_character_ranges=mdc_ranges,
+        transaction_hsab_exception_dup_acct_csv_columns=validate_string_list(
+            "ignore_rules.TransactionXO.HSAB.exception_dup_acct_csv_columns",
+            transaction_hsab.get("exception_dup_acct_csv_columns"),
+        ),
+        transaction_hsab_exception_utp_csv_columns=validate_string_list(
+            "ignore_rules.TransactionXO.HSAB.exception_utp_csv_columns",
+            transaction_hsab.get("exception_utp_csv_columns"),
         ),
     )
 

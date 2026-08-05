@@ -1,4 +1,4 @@
-# ClaimsXO / EnrollmentXO Output Verifier — Documentation Index
+# ClaimsXO / EnrollmentXO / TransactionXO Output Verifier — Documentation Index
 
 This folder contains detailed documentation for the **output-verifier** utility based on the current codebase.
 
@@ -10,11 +10,12 @@ This folder contains detailed documentation for the **output-verifier** utility 
 ## Quick context
 
 - **Product**: Expected vs Actual output verification after QA regression
-- **Solutions**: ClaimsXO, EnrollmentXO
+- **Solutions**: ClaimsXO, EnrollmentXO, TransactionXO
 - **Package**: `output_verifier` under `src/`
 - **ClaimsXO TPAs**: GDI, HSAB
 - **EnrollmentXO TPAs**: ABG, GDI, HSAB
-- **Formats**: XML (lxml), CSV, MBI, DelimitedText
+- **TransactionXO TPAs**: HSAB (`MDC`, `MDCExceptions`)
+- **Formats**: XML (lxml), CSV, MBI, DelimitedText, FixedWidth
 - **Outputs**: Excel report + rotating log file + console summary + exit code
 
 ## Recommended reading order for a new developer

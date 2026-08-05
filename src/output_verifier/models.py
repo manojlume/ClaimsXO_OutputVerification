@@ -55,6 +55,9 @@ class IgnoreRulesConfig:
     enrollment_gdi_report_csv_columns: tuple[str, ...] = ()
     enrollment_hsab_enrollment_import_field_positions: tuple[int, ...] = ()
     enrollment_hsab_report_csv_columns: tuple[str, ...] = ()
+    transaction_hsab_mdc_ignored_character_ranges: tuple[tuple[int, int], ...] = ()
+    transaction_hsab_exception_dup_acct_csv_columns: tuple[str, ...] = ()
+    transaction_hsab_exception_utp_csv_columns: tuple[str, ...] = ()
 
     def xml_paths_for(
         self,
@@ -100,6 +103,15 @@ class IgnoreRulesConfig:
                 and ignore_rule_key == "report_csv_columns"
             ):
                 return self.enrollment_hsab_report_csv_columns
+            return ()
+        if (
+            solution_type == SolutionType.TRANSACTION_XO
+            and verification_type == VerificationType.HSAB
+        ):
+            if ignore_rule_key == "exception_dup_acct_csv_columns":
+                return self.transaction_hsab_exception_dup_acct_csv_columns
+            if ignore_rule_key == "exception_utp_csv_columns":
+                return self.transaction_hsab_exception_utp_csv_columns
         return ()
 
     def field_positions_for(
@@ -132,6 +144,21 @@ class IgnoreRulesConfig:
                 and ignore_rule_key == "enrollment_import_field_positions"
             ):
                 return self.enrollment_hsab_enrollment_import_field_positions
+        return ()
+
+    def character_ranges_for(
+        self,
+        solution_type: SolutionType,
+        verification_type: VerificationType,
+        ignore_rule_key: str,
+    ) -> tuple[tuple[int, int], ...]:
+        """Return configured one-based inclusive character ranges to ignore."""
+        if (
+            solution_type == SolutionType.TRANSACTION_XO
+            and verification_type == VerificationType.HSAB
+            and ignore_rule_key == "mdc_ignored_character_ranges"
+        ):
+            return self.transaction_hsab_mdc_ignored_character_ranges
         return ()
 
 
@@ -222,6 +249,7 @@ class ComparisonOptions:
     ignored_mbi_field_positions: tuple[int, ...] = ()
     ignored_field_positions: tuple[int, ...] = ()
     ignored_columns: tuple[str, ...] = ()
+    ignored_character_ranges: tuple[tuple[int, int], ...] = ()
     delimiter: str = ","
     has_header: bool = False
     compare_trailing_empty_fields: bool = True

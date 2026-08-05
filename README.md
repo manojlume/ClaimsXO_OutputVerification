@@ -1,4 +1,4 @@
-# Output Verifier (ClaimsXO + EnrollmentXO)
+# Output Verifier (ClaimsXO + EnrollmentXO + TransactionXO)
 
 Python utility that compares **Expected Output** files against **Actual Output** files after a QA regression run, then writes an Excel verification report.
 
@@ -20,7 +20,7 @@ Detailed developer docs live under [`doc/`](doc/README.md):
 After QA has already produced Expected and Actual output trees, this tool:
 
 1. Discovers supported scenario / run / output folders
-2. Matches expected and actual files by normalized filename identity (datetime/runtime ignored)
+2. Matches expected and actual files by normalized filename identity (datetime/runtime/dynamic ignored)
 3. Compares content with format-specific comparators and configured ignore rules
 4. Writes an Excel report and prints a console summary
 5. Returns an exit code suitable for automation
@@ -31,6 +31,7 @@ After QA has already produced Expected and Actual output trees, this tool:
 | --- | --- |
 | **ClaimsXO** | GDI, HSAB |
 | **EnrollmentXO** | ABG, GDI, HSAB |
+| **TransactionXO** | HSAB |
 
 ### ClaimsXO
 
@@ -47,6 +48,20 @@ After QA has already produced Expected and Actual output trees, this tool:
 | **GDI** | `WexHealth`, `reports` | DelimitedTextComparator (pipe TXT / CSV) |
 | **HSAB** | `HSABEnrollmentImport`, `reports` | DelimitedTextComparator (comma TXT / CSV) |
 
+### TransactionXO
+
+| Verification type | Output folders | Comparator |
+| --- | --- | --- |
+| **HSAB** | `MDC`, `MDCExceptions` | FixedWidthComparator / CsvComparator |
+
+**MDC** (`HSB_EN_*_Converted.txt`): fixed-width text, line-by-line, spaces preserved, record order enforced. Dynamic middle segment is ignored for matching (`HSB_EN_*_Converted.txt`).
+
+**MDCExceptions**:
+- Duplicate Account: `HSB_EN_*_ExceptionDupAcct*.csv` → identity `HSB_EN_*_ExceptionDupAcct*.csv`
+- UTP: `HSB_EN_*_ExceptionUTP_*.csv` → identity `HSB_EN_*_ExceptionUTP_*.csv`
+
+These two exception identities never pair with each other. CSV comparison is exact (header + positional rows); long `EN transaction` mismatches report a character position with truncated context.
+
 Ignore rules are grouped by solution and verification type:
 
 ```yaml
@@ -58,6 +73,11 @@ ignore_rules:
     ABG: { ... }
     GDI: { ... }
     HSAB: { ... }
+  TransactionXO:
+    HSAB:
+      mdc_ignored_character_ranges: []   # e.g. "20-27", "45"
+      exception_dup_acct_csv_columns: []
+      exception_utp_csv_columns: []
 ```
 
 Old top-level `ignore_rules.GDI` / `ignore_rules.HSAB` still loads temporarily for ClaimsXO and logs a deprecation warning.
@@ -116,8 +136,8 @@ Template: `config.yaml`
 
 Important settings:
 
-- `solution_type`: `ClaimsXO` or `EnrollmentXO`
-- `verification_type`: allowed for that solution (ClaimsXO: GDI/HSAB; EnrollmentXO: ABG/GDI/HSAB)
+- `solution_type`: `ClaimsXO`, `EnrollmentXO`, or `TransactionXO`
+- `verification_type`: allowed for that solution (ClaimsXO: GDI/HSAB; EnrollmentXO: ABG/GDI/HSAB; TransactionXO: HSAB)
 - `expected_parent_folder` / `actual_parent_folder`
 - `report.*` report naming, folder, and status colors
 - `logging.*` console/file logging with rotation
@@ -144,6 +164,11 @@ ignore_rules:
     ABG:
       alegeus_mbi_field_positions: []
       report_csv_columns: []
+  TransactionXO:
+    HSAB:
+      mdc_ignored_character_ranges: []
+      exception_dup_acct_csv_columns: []
+      exception_utp_csv_columns: []
 ```
 
 Notes:
@@ -162,6 +187,8 @@ set PYTHONPATH=src
 python -m output_verifier --config config.yaml --solution-type ClaimsXO --verification-type GDI --expected-parent-folder "H:\ExpectedOutputs" --actual-parent-folder "H:\ActualOutputs"
 
 python -m output_verifier --config config.yaml --solution-type EnrollmentXO --verification-type ABG --expected-parent-folder "H:\Expected" --actual-parent-folder "H:\Actual"
+
+python -m output_verifier --config config.yaml --solution-type TransactionXO --verification-type HSAB --expected-parent-folder "H:\ExpectedOutputs\TransactionXO\HSAB" --actual-parent-folder "H:\ActualOutputs\TransactionXO\HSAB"
 ```
 
 Or use the helper script:

@@ -46,8 +46,15 @@ def build_argument_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--solution-type",
-        choices=["ClaimsXO", "EnrollmentXO", "claimsxo", "enrollmentxo"],
-        help="Override solution_type from YAML (ClaimsXO or EnrollmentXO).",
+        choices=[
+            "ClaimsXO",
+            "EnrollmentXO",
+            "TransactionXO",
+            "claimsxo",
+            "enrollmentxo",
+            "transactionxo",
+        ],
+        help="Override solution_type from YAML (ClaimsXO, EnrollmentXO, or TransactionXO).",
     )
     parser.add_argument(
         "--verification-type",

@@ -28,6 +28,7 @@ class SolutionType(str, Enum):
 
     CLAIMS_XO = "ClaimsXO"
     ENROLLMENT_XO = "EnrollmentXO"
+    TRANSACTION_XO = "TransactionXO"
 
 
 class VerificationType(str, Enum):
@@ -49,6 +50,8 @@ class OutputType(str, Enum):
     REPORTS = "reports"
     WEX_HEALTH = "WexHealth"
     HSAB_ENROLLMENT_IMPORT = "HSABEnrollmentImport"
+    MDC = "MDC"
+    MDC_EXCEPTIONS = "MDCExceptions"
 
 
 class RunType(str, Enum):
@@ -75,6 +78,7 @@ class FileFormat(str, Enum):
     CSV = "csv"
     MBI = "mbi"
     DELIMITED_TEXT = "delimited_text"
+    FIXED_WIDTH = "fixed_width"
 
 
 class ExitCode(int, Enum):
@@ -104,6 +108,7 @@ SUPPORTED_RUN_FOLDERS: frozenset[str] = frozenset(
 
 CLAIMS_XO_EXTENSIONS: frozenset[str] = frozenset({".xml", ".csv", ".mbi"})
 ENROLLMENT_XO_EXTENSIONS: frozenset[str] = frozenset({".mbi", ".txt", ".csv"})
+TRANSACTION_XO_EXTENSIONS: frozenset[str] = frozenset({".txt", ".csv"})
 
 OUTPUT_TYPE_CANONICAL: dict[str, OutputType] = {
     "lh1": OutputType.LH1,
@@ -114,6 +119,8 @@ OUTPUT_TYPE_CANONICAL: dict[str, OutputType] = {
     "reports": OutputType.REPORTS,
     "wexhealth": OutputType.WEX_HEALTH,
     "hsabenrollmentimport": OutputType.HSAB_ENROLLMENT_IMPORT,
+    "mdc": OutputType.MDC,
+    "mdcexceptions": OutputType.MDC_EXCEPTIONS,
 }
 
 CLAIMS_XO_VERIFICATION_TYPES: frozenset[VerificationType] = frozenset(
@@ -121,6 +128,9 @@ CLAIMS_XO_VERIFICATION_TYPES: frozenset[VerificationType] = frozenset(
 )
 ENROLLMENT_XO_VERIFICATION_TYPES: frozenset[VerificationType] = frozenset(
     {VerificationType.ABG, VerificationType.GDI, VerificationType.HSAB}
+)
+TRANSACTION_XO_VERIFICATION_TYPES: frozenset[VerificationType] = frozenset(
+    {VerificationType.HSAB}
 )
 
 VALID_LOG_LEVELS: frozenset[str] = frozenset(
@@ -198,6 +208,20 @@ ENROLLMENT_HSAB_CHANGE_REPORT_PATTERN = re.compile(
 )
 ENROLLMENT_HSAB_EXCEPTION_REPORT_PATTERN = re.compile(
     r"^HSAB_ExceptionReport_(?P<rest>.+)_(?P<runtime>\d+)\.csv$",
+    re.IGNORECASE,
+)
+
+# TransactionXO–HSAB filename patterns (dynamic segments ignored for identity).
+TRANSACTION_MDC_CONVERTED_PATTERN = re.compile(
+    r"^HSB_EN_(?P<dynamic>.+)_Converted\.txt$",
+    re.IGNORECASE,
+)
+TRANSACTION_EXCEPTION_DUP_ACCT_PATTERN = re.compile(
+    r"^HSB_EN_.+_ExceptionDupAcct.*\.csv$",
+    re.IGNORECASE,
+)
+TRANSACTION_EXCEPTION_UTP_PATTERN = re.compile(
+    r"^HSB_EN_.+_ExceptionUTP_.+\.csv$",
     re.IGNORECASE,
 )
 
@@ -517,6 +541,46 @@ ENROLLMENT_XO_HSAB_PROFILE = SolutionProfile(
     ),
 )
 
+TRANSACTION_XO_HSAB_PROFILE = SolutionProfile(
+    solution_type=SolutionType.TRANSACTION_XO,
+    verification_type=VerificationType.HSAB,
+    supported_extensions=TRANSACTION_XO_EXTENSIONS,
+    output_folders=(
+        OutputFolderProfile(
+            output_type=OutputType.MDC,
+            filename_rules=(
+                FilenameRule(
+                    pattern=TRANSACTION_MDC_CONVERTED_PATTERN,
+                    normalized_template="HSB_EN_*_Converted.txt",
+                    file_format=FileFormat.FIXED_WIDTH,
+                    ignore_rule_key="mdc_ignored_character_ranges",
+                ),
+            ),
+        ),
+        OutputFolderProfile(
+            output_type=OutputType.MDC_EXCEPTIONS,
+            filename_rules=(
+                FilenameRule(
+                    pattern=TRANSACTION_EXCEPTION_DUP_ACCT_PATTERN,
+                    normalized_template="HSB_EN_*_ExceptionDupAcct*.csv",
+                    file_format=FileFormat.CSV,
+                    ignore_rule_key="exception_dup_acct_csv_columns",
+                    delimiter=COMMA_DELIMITER,
+                    has_header=True,
+                ),
+                FilenameRule(
+                    pattern=TRANSACTION_EXCEPTION_UTP_PATTERN,
+                    normalized_template="HSB_EN_*_ExceptionUTP_*.csv",
+                    file_format=FileFormat.CSV,
+                    ignore_rule_key="exception_utp_csv_columns",
+                    delimiter=COMMA_DELIMITER,
+                    has_header=True,
+                ),
+            ),
+        ),
+    ),
+)
+
 CLAIMS_XO_PROFILES: dict[VerificationType, SolutionProfile] = {
     VerificationType.GDI: CLAIMS_XO_GDI_PROFILE,
     VerificationType.HSAB: CLAIMS_XO_HSAB_PROFILE,
@@ -528,9 +592,14 @@ ENROLLMENT_XO_PROFILES: dict[VerificationType, SolutionProfile] = {
     VerificationType.HSAB: ENROLLMENT_XO_HSAB_PROFILE,
 }
 
+TRANSACTION_XO_PROFILES: dict[VerificationType, SolutionProfile] = {
+    VerificationType.HSAB: TRANSACTION_XO_HSAB_PROFILE,
+}
+
 SOLUTION_PROFILES: dict[SolutionType, dict[VerificationType, SolutionProfile]] = {
     SolutionType.CLAIMS_XO: CLAIMS_XO_PROFILES,
     SolutionType.ENROLLMENT_XO: ENROLLMENT_XO_PROFILES,
+    SolutionType.TRANSACTION_XO: TRANSACTION_XO_PROFILES,
 }
 
 # Backward-compatible aliases used by older ClaimsXO call sites during migration.
@@ -567,4 +636,6 @@ def allowed_verification_types(solution_type: SolutionType) -> frozenset[Verific
         return CLAIMS_XO_VERIFICATION_TYPES
     if solution_type == SolutionType.ENROLLMENT_XO:
         return ENROLLMENT_XO_VERIFICATION_TYPES
+    if solution_type == SolutionType.TRANSACTION_XO:
+        return TRANSACTION_XO_VERIFICATION_TYPES
     return frozenset()

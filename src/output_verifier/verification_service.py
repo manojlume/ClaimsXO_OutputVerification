@@ -7,6 +7,7 @@ from collections import defaultdict
 
 from output_verifier.comparators.csv_comparator import CsvComparator
 from output_verifier.comparators.delimited_text_comparator import DelimitedTextComparator
+from output_verifier.comparators.fixed_width_comparator import FixedWidthComparator
 from output_verifier.comparators.mbi_comparator import MbiComparator
 from output_verifier.comparators.xml_comparator import XmlComparator
 from output_verifier.constants import (
@@ -39,6 +40,7 @@ class VerificationService:
         self._csv_comparator = CsvComparator()
         self._mbi_comparator = MbiComparator()
         self._delimited_text_comparator = DelimitedTextComparator()
+        self._fixed_width_comparator = FixedWidthComparator()
 
     def run(self) -> tuple[list[ReportRow], ExitCode]:
         """Execute verification and return report rows plus comparison exit code."""
@@ -231,6 +233,12 @@ class VerificationService:
                 pair.actual_file,
                 options,
             )
+        if pair.file_format == FileFormat.FIXED_WIDTH:
+            return self._fixed_width_comparator.compare(
+                pair.expected_file,
+                pair.actual_file,
+                options,
+            )
 
         return ComparisonResult(
             status=VerificationStatus.FAILED,
@@ -276,6 +284,12 @@ class VerificationService:
                     solution, verification, ignore_key
                 ),
                 compare_trailing_empty_fields=pair.compare_trailing_empty_fields,
+            )
+        if pair.file_format == FileFormat.FIXED_WIDTH:
+            return ComparisonOptions(
+                ignored_character_ranges=ignore_rules.character_ranges_for(
+                    solution, verification, ignore_key
+                )
             )
         return ComparisonOptions()
 

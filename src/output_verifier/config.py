@@ -26,12 +26,14 @@ def parse_solution_type(value: Any) -> SolutionType:
     if not isinstance(value, str) or not value.strip():
         raise ConfigurationError("solution_type is required and must be a string.")
     normalized = value.strip()
-    try:
-        return SolutionType(normalized)
-    except ValueError as error:
+    lookup = {item.value.lower(): item for item in SolutionType}
+    solution = lookup.get(normalized.lower())
+    if solution is None:
         raise ConfigurationError(
-            f"Unsupported solution type: {value}. Supported values: ClaimsXO, EnrollmentXO."
-        ) from error
+            f"Unsupported solution type: {value}. "
+            "Supported values: ClaimsXO, EnrollmentXO, TransactionXO."
+        )
+    return solution
 
 
 def parse_verification_type(value: str) -> VerificationType:
@@ -146,6 +148,50 @@ def validate_field_positions(field_name: str, value: Any) -> tuple[int, ...]:
 def validate_mbi_field_positions(value: Any) -> tuple[int, ...]:
     """Validate one-based MBI ignore field positions."""
     return validate_field_positions("ignore_rules.*.mbi_field_positions", value)
+
+
+def validate_character_ranges(field_name: str, value: Any) -> tuple[tuple[int, int], ...]:
+    """
+    Validate one-based inclusive character ranges from YAML.
+
+    Accepted forms: "45" or "20-27".
+    """
+    if value is None:
+        return ()
+    if not isinstance(value, list):
+        raise ConfigurationError(f"{field_name} must be a list of range strings.")
+
+    ranges: list[tuple[int, int]] = []
+    for item in value:
+        if not isinstance(item, str) or not item.strip():
+            raise ConfigurationError(
+                f"Invalid character range in {field_name}: {item!r}. "
+                'Use forms like "45" or "20-27".'
+            )
+        token = item.strip()
+        if "-" in token:
+            parts = token.split("-", 1)
+            if len(parts) != 2 or not parts[0].isdigit() or not parts[1].isdigit():
+                raise ConfigurationError(
+                    f"Invalid character range in {field_name}: {item!r}. "
+                    'Use forms like "45" or "20-27".'
+                )
+            start = int(parts[0])
+            end = int(parts[1])
+        elif token.isdigit():
+            start = end = int(token)
+        else:
+            raise ConfigurationError(
+                f"Invalid character range in {field_name}: {item!r}. "
+                'Use forms like "45" or "20-27".'
+            )
+        if start <= 0 or end <= 0 or end < start:
+            raise ConfigurationError(
+                f"Invalid character range in {field_name}: {item!r}. "
+                "Positions must be positive one-based inclusive ranges."
+            )
+        ranges.append((start, end))
+    return tuple(ranges)
 
 
 def validate_xpath_list(field_name: str, paths: tuple[str, ...]) -> tuple[str, ...]:
