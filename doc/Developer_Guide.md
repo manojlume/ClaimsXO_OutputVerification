@@ -167,9 +167,9 @@ Profiles live in `constants.py` as `SOLUTION_PROFILES` (`get_solution_profile(so
 
 | Output folder | Files | Comparator | Ignore config key |
 | --- | --- | --- | --- |
-| `LH1` | `GDI_LH1_<datetime>.xml`, `GDI_LH1_MMS_…`, `GDI_LH1_FLORES_…`, `GDI_LH1_HNE_…`, `GDI_REGEN_LH1_…` | XML | `ignore_rules.ClaimsXO.GDI.lh1_xml_paths` |
-| `manual` | `GDI_MANUAL_<datetime>.csv` | CSV | `manual_csv_columns` |
-| `manual` | `GDI_MANUAL_PATIENT_<datetime>.csv` | CSV | `patient_manual_csv_columns` |
+| `LH1` | `GDI_LH1_<datetime>.xml`, `GDI_LH1_MMS_…`, `GDI_LH1_FLORES_…`, `GDI_LH1_HNE_…`, `GDI_REGEN_LH1_…`, `GDI_REPROCESS_LH1_…`, `GDI_REPROCESS_LH1_MMS_…`, `GDI_REPROCESS_LH1_FLORES_…`, `GDI_REPROCESS_LH1_HNE_…` | XML | `ignore_rules.ClaimsXO.GDI.lh1_xml_paths` |
+| `manual` | `GDI_MANUAL_<datetime>.csv`, `GDI_REPROCESS_MANUAL_<datetime>.csv` | CSV | `manual_csv_columns` |
+| `manual` | `GDI_MANUAL_PATIENT_<datetime>.csv`, `GDI_REPROCESS_MANUAL_PATIENT_<datetime>.csv` | CSV | `patient_manual_csv_columns` |
 | `ALG` | `LumeLight.ClaimFeed.<datetime>.mbi` | MBI | `mbi_field_positions` |
 
 #### ClaimsXO — HSAB

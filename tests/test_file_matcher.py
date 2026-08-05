@@ -127,6 +127,87 @@ def test_invalid_filename_pattern(tmp_path: Path) -> None:
     assert pairs[0].file_format is None
 
 
+def test_reprocess_lh1_patterns_match(tmp_path: Path) -> None:
+    cases = [
+        (
+            "GDI_REPROCESS_LH1_20260730110000.xml",
+            "GDI_REPROCESS_LH1_20260730120000.xml",
+            "GDI_REPROCESS_LH1_<datetime>.xml",
+        ),
+        (
+            "GDI_REPROCESS_LH1_MMS_20260730110000.xml",
+            "GDI_REPROCESS_LH1_MMS_20260730120000.xml",
+            "GDI_REPROCESS_LH1_MMS_<datetime>.xml",
+        ),
+        (
+            "GDI_REPROCESS_LH1_FLORES_20260730110000.xml",
+            "GDI_REPROCESS_LH1_FLORES_20260730120000.xml",
+            "GDI_REPROCESS_LH1_FLORES_<datetime>.xml",
+        ),
+        (
+            "GDI_REPROCESS_LH1_HNE_20260730110000.xml",
+            "GDI_REPROCESS_LH1_HNE_20260730120000.xml",
+            "GDI_REPROCESS_LH1_HNE_<datetime>.xml",
+        ),
+    ]
+    for expected_name, actual_name, identity in cases:
+        expected = tmp_path / expected_name
+        actual = tmp_path / actual_name
+        expected.write_text("<a/>", encoding="utf-8")
+        actual.write_text("<a/>", encoding="utf-8")
+        pairs = match_files_for_output(_discovered([expected], [actual]), GDI_PROFILE)
+        assert len(pairs) == 1
+        assert pairs[0].normalized_identity == identity
+        assert pairs[0].is_valid_pattern
+
+
+def test_reprocess_does_not_match_non_reprocess_lh1(tmp_path: Path) -> None:
+    expected = tmp_path / "GDI_LH1_20260730110000.xml"
+    actual = tmp_path / "GDI_REPROCESS_LH1_20260730120000.xml"
+    expected.write_text("<a/>", encoding="utf-8")
+    actual.write_text("<a/>", encoding="utf-8")
+
+    pairs = match_files_for_output(_discovered([expected], [actual]), GDI_PROFILE)
+    assert len(pairs) == 2
+    identities = {pair.normalized_identity for pair in pairs}
+    assert identities == {
+        "GDI_LH1_<datetime>.xml",
+        "GDI_REPROCESS_LH1_<datetime>.xml",
+    }
+
+
+def test_reprocess_manual_patterns_match(tmp_path: Path) -> None:
+    expected = tmp_path / "GDI_REPROCESS_MANUAL_20260730110000.csv"
+    actual = tmp_path / "GDI_REPROCESS_MANUAL_20260730120000.csv"
+    expected.write_text("a\n", encoding="utf-8")
+    actual.write_text("a\n", encoding="utf-8")
+
+    pairs = match_files_for_output(
+        _discovered([expected], [actual], OutputType.MANUAL),
+        GDI_PROFILE,
+    )
+    assert len(pairs) == 1
+    assert pairs[0].normalized_identity == "GDI_REPROCESS_MANUAL_<datetime>.csv"
+
+
+def test_reprocess_manual_does_not_match_patient(tmp_path: Path) -> None:
+    manual = tmp_path / "GDI_REPROCESS_MANUAL_20260730110000.csv"
+    patient = tmp_path / "GDI_REPROCESS_MANUAL_PATIENT_20260730110000.csv"
+    manual.write_text("a\n", encoding="utf-8")
+    patient.write_text("a\n", encoding="utf-8")
+
+    pairs = match_files_for_output(
+        _discovered([manual], [patient], OutputType.MANUAL),
+        GDI_PROFILE,
+    )
+    assert len(pairs) == 2
+    identities = {pair.normalized_identity for pair in pairs}
+    assert identities == {
+        "GDI_REPROCESS_MANUAL_<datetime>.csv",
+        "GDI_REPROCESS_MANUAL_PATIENT_<datetime>.csv",
+    }
+
+
 def test_normalize_filename_identity() -> None:
     assert (
         normalize_filename_identity("LumeLight.ClaimFeed.20260730110000.mbi")

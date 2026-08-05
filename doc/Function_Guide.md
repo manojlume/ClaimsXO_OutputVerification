@@ -167,9 +167,12 @@ Application constants, enums, filename patterns, and TPA profile registry.
 
 | Constant | Matches |
 | --- | --- |
-| `GDI_LH1_PATTERNS` | Five LH1 XML variants |
+| `GDI_LH1_PATTERNS` | Five standard LH1 XML variants |
+| `GDI_REPROCESS_LH1_*_PATTERN` | REPROCESS LH1 / MMS / FLORES / HNE XML |
 | `GDI_MANUAL_PATTERN` | `GDI_MANUAL_<dt>.csv` |
 | `GDI_MANUAL_PATIENT_PATTERN` | `GDI_MANUAL_PATIENT_<dt>.csv` |
+| `GDI_REPROCESS_MANUAL_PATTERN` | `GDI_REPROCESS_MANUAL_<dt>.csv` |
+| `GDI_REPROCESS_MANUAL_PATIENT_PATTERN` | `GDI_REPROCESS_MANUAL_PATIENT_<dt>.csv` |
 | `GDI_MBI_PATTERN` | `LumeLight.ClaimFeed.<dt>.mbi` |
 | `HSAB_HB1_PATTERN` / `HSAB_HB2_PATTERN` | WEX XML claims files |
 | `ABG_EXPORT_MBI_PATTERN` / `ABG_*_REPORT_PATTERN` | Enrollment ABG files |

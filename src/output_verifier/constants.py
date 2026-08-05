@@ -137,9 +137,27 @@ GDI_LH1_PATTERNS: tuple[Pattern[str], ...] = (
     re.compile(r"^GDI_LH1_HNE_(\d{14})\.xml$", re.IGNORECASE),
     re.compile(r"^GDI_REGEN_LH1_(\d{14})\.xml$", re.IGNORECASE),
 )
+GDI_REPROCESS_LH1_PATTERN = re.compile(
+    r"^GDI_REPROCESS_LH1_(\d{14})\.xml$", re.IGNORECASE
+)
+GDI_REPROCESS_LH1_MMS_PATTERN = re.compile(
+    r"^GDI_REPROCESS_LH1_MMS_(\d{14})\.xml$", re.IGNORECASE
+)
+GDI_REPROCESS_LH1_FLORES_PATTERN = re.compile(
+    r"^GDI_REPROCESS_LH1_FLORES_(\d{14})\.xml$", re.IGNORECASE
+)
+GDI_REPROCESS_LH1_HNE_PATTERN = re.compile(
+    r"^GDI_REPROCESS_LH1_HNE_(\d{14})\.xml$", re.IGNORECASE
+)
 GDI_MANUAL_PATTERN = re.compile(r"^GDI_MANUAL_(\d{14})\.csv$", re.IGNORECASE)
 GDI_MANUAL_PATIENT_PATTERN = re.compile(
     r"^GDI_MANUAL_PATIENT_(\d{14})\.csv$", re.IGNORECASE
+)
+GDI_REPROCESS_MANUAL_PATTERN = re.compile(
+    r"^GDI_REPROCESS_MANUAL_(\d{14})\.csv$", re.IGNORECASE
+)
+GDI_REPROCESS_MANUAL_PATIENT_PATTERN = re.compile(
+    r"^GDI_REPROCESS_MANUAL_PATIENT_(\d{14})\.csv$", re.IGNORECASE
 )
 GDI_MBI_PATTERN = re.compile(r"^LumeLight\.ClaimFeed\.(\d{14})\.mbi$", re.IGNORECASE)
 HSAB_HB1_PATTERN = re.compile(r"^HB1_HSAB_CLAIMS_(\d{14})\.xml$", re.IGNORECASE)
@@ -256,6 +274,21 @@ CLAIMS_XO_GDI_PROFILE = SolutionProfile(
                 _claims_xml_rule(GDI_LH1_PATTERNS[2], f"GDI_LH1_FLORES_{DATETIME_TOKEN}.xml"),
                 _claims_xml_rule(GDI_LH1_PATTERNS[3], f"GDI_LH1_HNE_{DATETIME_TOKEN}.xml"),
                 _claims_xml_rule(GDI_LH1_PATTERNS[4], f"GDI_REGEN_LH1_{DATETIME_TOKEN}.xml"),
+                _claims_xml_rule(
+                    GDI_REPROCESS_LH1_PATTERN, f"GDI_REPROCESS_LH1_{DATETIME_TOKEN}.xml"
+                ),
+                _claims_xml_rule(
+                    GDI_REPROCESS_LH1_MMS_PATTERN,
+                    f"GDI_REPROCESS_LH1_MMS_{DATETIME_TOKEN}.xml",
+                ),
+                _claims_xml_rule(
+                    GDI_REPROCESS_LH1_FLORES_PATTERN,
+                    f"GDI_REPROCESS_LH1_FLORES_{DATETIME_TOKEN}.xml",
+                ),
+                _claims_xml_rule(
+                    GDI_REPROCESS_LH1_HNE_PATTERN,
+                    f"GDI_REPROCESS_LH1_HNE_{DATETIME_TOKEN}.xml",
+                ),
             ),
         ),
         OutputFolderProfile(
@@ -272,6 +305,22 @@ CLAIMS_XO_GDI_PROFILE = SolutionProfile(
                 FilenameRule(
                     pattern=GDI_MANUAL_PATIENT_PATTERN,
                     normalized_template=f"GDI_MANUAL_PATIENT_{DATETIME_TOKEN}.csv",
+                    file_format=FileFormat.CSV,
+                    ignore_rule_key="patient_manual_csv_columns",
+                    delimiter=COMMA_DELIMITER,
+                    has_header=True,
+                ),
+                FilenameRule(
+                    pattern=GDI_REPROCESS_MANUAL_PATTERN,
+                    normalized_template=f"GDI_REPROCESS_MANUAL_{DATETIME_TOKEN}.csv",
+                    file_format=FileFormat.CSV,
+                    ignore_rule_key="manual_csv_columns",
+                    delimiter=COMMA_DELIMITER,
+                    has_header=True,
+                ),
+                FilenameRule(
+                    pattern=GDI_REPROCESS_MANUAL_PATIENT_PATTERN,
+                    normalized_template=f"GDI_REPROCESS_MANUAL_PATIENT_{DATETIME_TOKEN}.csv",
                     file_format=FileFormat.CSV,
                     ignore_rule_key="patient_manual_csv_columns",
                     delimiter=COMMA_DELIMITER,
