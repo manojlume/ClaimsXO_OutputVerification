@@ -78,6 +78,9 @@ Supported filename patterns:
 - GDI_LH1_FLORES_<datetime>.xml
 - GDI_LH1_HNE_<datetime>.xml
 - GDI_REGEN_LH1_<datetime>.xml
+- GDI_REPROCESS_LH1_MMS_<datetime>.xml
+- GDI_REPROCESS_LH1_HNE_<datetime>.xml
+- GDI_REPROCESS_LH1_<datetime>.xml
 
 The <datetime> value will be in yyyyMMddHHmmss format.
 
@@ -129,7 +132,7 @@ Supported filename patterns:
 - HB1_HSAB_CLAIMS_<datetime>.xml
 - HB2_HSAB_CLAIMS_<datetime>.xml
 
-Both HB1, HB2, HB3 etc. files:
+HB1, HB2, HB3 etc. files:
 
 - Are stored in the same WEX folder.
 - Have the same XML format.
