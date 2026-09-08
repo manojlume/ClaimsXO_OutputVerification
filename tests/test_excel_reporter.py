@@ -17,7 +17,7 @@ def test_build_report_filename() -> None:
         output_folder=Path("."),
         base_file_name="VerificationReport",
         include_solution_type=True,
-        include_verification_type=True,
+        include_tpa_id=True,
         include_timestamp=True,
         timestamp_format="%Y%m%d%H%M%S",
         status_colors={},
@@ -40,7 +40,7 @@ def test_excel_reporter_creates_sheets(tmp_path: Path) -> None:
         output_folder=tmp_path,
         base_file_name="VerificationReport",
         include_solution_type=True,
-        include_verification_type=True,
+        include_tpa_id=True,
         include_timestamp=True,
         timestamp_format="%Y%m%d%H%M%S",
         status_colors={

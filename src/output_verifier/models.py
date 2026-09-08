@@ -22,7 +22,7 @@ class ReportConfig:
     output_folder: Path
     base_file_name: str
     include_solution_type: bool
-    include_verification_type: bool
+    include_tpa_id: bool
     include_timestamp: bool
     timestamp_format: str
     status_colors: dict[str, str]
@@ -167,7 +167,7 @@ class ResolvedConfig:
     """Fully resolved application configuration."""
 
     solution_type: SolutionType
-    verification_type: VerificationType
+    tpa_id: VerificationType
     expected_parent_folder: Path
     actual_parent_folder: Path
     report: ReportConfig

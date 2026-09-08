@@ -66,7 +66,7 @@ def run(argv: list[str] | None = None) -> int:
         resolved = load_resolved_config(
             config_path,
             solution_type_override=solution_override,
-            verification_type_override=arguments.verification_type,
+            tpa_id_override=arguments.tpa_id,
             expected_parent_folder_override=arguments.expected_parent_folder,
             actual_parent_folder_override=arguments.actual_parent_folder,
             report_output_folder_override=arguments.report_output_folder,
@@ -87,7 +87,7 @@ def run(argv: list[str] | None = None) -> int:
         setup_logging(
             resolved.logging,
             solution_type=resolved.solution_type,
-            verification_type=resolved.verification_type,
+            verification_type=resolved.tpa_id,
             immediate_parent=immediate_parent,
             timestamp_token=timestamp_token,
         )
@@ -98,7 +98,7 @@ def run(argv: list[str] | None = None) -> int:
     LOGGER.info("Application start: %s v%s", APPLICATION_NAME, APPLICATION_VERSION)
     LOGGER.info("Package version: %s", __version__)
     LOGGER.info("Resolved solution_type=%s", resolved.solution_type.value)
-    LOGGER.info("Resolved verification_type=%s", resolved.verification_type.value)
+    LOGGER.info("Resolved tpa_id=%s", resolved.tpa_id.value)
     LOGGER.info("Expected root=%s", resolved.expected_parent_folder)
     LOGGER.info("Actual root=%s", resolved.actual_parent_folder)
     LOGGER.info("Immediate actual parent folder=%s", immediate_parent)
@@ -111,7 +111,7 @@ def run(argv: list[str] | None = None) -> int:
 
     summary = ExecutionSummary(
         solution_type=resolved.solution_type,
-        verification_type=resolved.verification_type,
+        verification_type=resolved.tpa_id,
         execution_start_time=execution_start,
         execution_end_time=None,
         expected_root=resolved.expected_parent_folder,

@@ -57,9 +57,16 @@ def build_argument_parser() -> argparse.ArgumentParser:
         help="Override solution_type from YAML (ClaimsXO, EnrollmentXO, or TransactionXO).",
     )
     parser.add_argument(
-        "--verification-type",
+        "--tpa-id",
+        dest="tpa_id",
         choices=["ABG", "GDI", "HSAB", "abg", "gdi", "hsab"],
-        help="Override verification_type from YAML (ABG, GDI, or HSAB).",
+        help="Override tpa_id from YAML (ABG, GDI, or HSAB).",
+    )
+    parser.add_argument(
+        "--verification-type",
+        dest="tpa_id",
+        choices=["ABG", "GDI", "HSAB", "abg", "gdi", "hsab"],
+        help="Deprecated alias for --tpa-id.",
     )
     parser.add_argument(
         "--expected-parent-folder",

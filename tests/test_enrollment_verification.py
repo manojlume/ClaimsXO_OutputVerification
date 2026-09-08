@@ -24,14 +24,14 @@ def _touch(path: Path, content: str) -> None:
 def _enrollment_config(tmp_path: Path, expected: Path, actual: Path, verification_type: str):
     data = {
         "solution_type": "EnrollmentXO",
-        "verification_type": verification_type,
+        "tpa_id": verification_type,
         "expected_parent_folder": str(expected),
         "actual_parent_folder": str(actual),
         "report": {
             "output_folder": str(tmp_path / "reports"),
             "base_file_name": "VerificationReport",
             "include_solution_type": True,
-            "include_verification_type": True,
+            "include_tpa_id": True,
             "include_timestamp": True,
             "timestamp_format": "%Y%m%d%H%M%S",
             "status_colors": {

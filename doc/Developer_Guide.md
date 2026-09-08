@@ -373,7 +373,7 @@ Difference types include: Element missing/unexpected, Element name mismatch, Tex
 
 ```yaml
 solution_type: ClaimsXO   # or EnrollmentXO
-verification_type: GDI    # ClaimsXO: GDI/HSAB | EnrollmentXO: ABG/GDI/HSAB
+tpa_id: GDI    # ClaimsXO: GDI/HSAB | EnrollmentXO: ABG/GDI/HSAB | TransactionXO: HSAB
 expected_parent_folder: "..."
 actual_parent_folder: "..."
 
@@ -381,7 +381,7 @@ report:
   output_folder: "./reports"
   base_file_name: "VerificationReport"
   include_solution_type: true
-  include_verification_type: true
+  include_tpa_id: true
   include_timestamp: true
   timestamp_format: "%Y%m%d%H%M%S"
   status_colors:
@@ -423,7 +423,7 @@ Legacy top-level `ignore_rules.GDI` / `ignore_rules.HSAB` still loads for Claims
 ### 7.3 Validation highlights
 
 - `solution_type` must be `ClaimsXO` or `EnrollmentXO`  
-- `verification_type` must be allowed for that solution  
+- `tpa_id` must be allowed for that solution  
 - Parent folders must exist and be directories at runtime  
 - Report/log folders must be creatable  
 - Status colors must be `#RRGGBB`  
@@ -527,11 +527,11 @@ python -m pytest tests -v
 ### Run utility
 
 ```bat
-python -m output_verifier --config config.yaml --solution-type ClaimsXO --verification-type GDI ^
+python -m output_verifier --config config.yaml --solution-type ClaimsXO --tpa-id GDI ^
   --expected-parent-folder "H:\...\ExpectedOutput\ClaimsXO\GDI" ^
   --actual-parent-folder "H:\...\ActualOutput\ClaimsXO\GDI\20260612_000022_fullrun"
 
-python -m output_verifier --config config.yaml --solution-type EnrollmentXO --verification-type ABG ^
+python -m output_verifier --config config.yaml --solution-type EnrollmentXO --tpa-id ABG ^
   --expected-parent-folder "H:\...\ExpectedOutput\EnrollmentXO\ABG" ^
   --actual-parent-folder "H:\...\ActualOutput\EnrollmentXO\ABG\<run_folder>"
 ```

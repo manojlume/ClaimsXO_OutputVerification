@@ -17,14 +17,14 @@ def _touch(path: Path, content: str) -> None:
 def _config(tmp_path: Path, expected: Path, actual: Path):
     data = {
         "solution_type": "TransactionXO",
-        "verification_type": "HSAB",
+        "tpa_id": "HSAB",
         "expected_parent_folder": str(expected),
         "actual_parent_folder": str(actual),
         "report": {
             "output_folder": str(tmp_path / "reports"),
             "base_file_name": "VerificationReport",
             "include_solution_type": True,
-            "include_verification_type": True,
+            "include_tpa_id": True,
             "include_timestamp": True,
             "timestamp_format": "%Y%m%d%H%M%S",
             "status_colors": {

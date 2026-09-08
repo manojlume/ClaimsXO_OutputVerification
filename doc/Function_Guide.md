@@ -49,7 +49,7 @@ Command-line argument parsing and default config path resolution.
 | --- | --- | --- |
 | `application_directory` | `() -> Path` | Directory containing the running app. Frozen exe → folder of `sys.executable`. Source run → `Path.cwd()`. |
 | `default_config_path` | `() -> Path` | Returns `{application_directory()}/config.yaml`. |
-| `build_argument_parser` | `() -> argparse.ArgumentParser` | Builds parser with `--config`, `--solution-type`, `--verification-type`, `--expected-parent-folder`, `--actual-parent-folder`, `--report-output-folder`, `--log-level`. |
+| `build_argument_parser` | `() -> argparse.ArgumentParser` | Builds parser with `--config`, `--solution-type`, `--tpa-id`, `--expected-parent-folder`, `--actual-parent-folder`, `--report-output-folder`, `--log-level`. |
 | `parse_arguments` | `(argv: list[str] \| None = None) -> Namespace` | Parses CLI args (uses `sys.argv` when `argv` is None). |
 | `config_path_from_args` | `(arguments: Namespace) -> Path` | Returns `Path(arguments.config)`. |
 
@@ -273,7 +273,7 @@ YAML loading and resolution into `ResolvedConfig`.
 ### Notable `build_resolved_config` parameters
 
 - `solution_type_override`
-- `verification_type_override`
+- `tpa_id_override`
 - `expected_parent_folder_override`
 - `actual_parent_folder_override`
 - `report_output_folder_override`

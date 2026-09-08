@@ -22,14 +22,14 @@ def _paths(tmp_path: Path) -> tuple[Path, Path]:
 def _base(expected: Path, actual: Path) -> dict:
     return {
         "solution_type": "TransactionXO",
-        "verification_type": "HSAB",
+        "tpa_id": "HSAB",
         "expected_parent_folder": str(expected),
         "actual_parent_folder": str(actual),
         "report": {
             "output_folder": str(expected.parent / "reports"),
             "base_file_name": "VerificationReport",
             "include_solution_type": True,
-            "include_verification_type": True,
+            "include_tpa_id": True,
             "include_timestamp": True,
             "timestamp_format": "%Y%m%d%H%M%S",
             "status_colors": {
@@ -62,7 +62,7 @@ def test_transaction_hsab_accepted(tmp_path: Path) -> None:
     expected, actual = _paths(tmp_path)
     resolved = build_resolved_config(_base(expected, actual))
     assert resolved.solution_type == SolutionType.TRANSACTION_XO
-    assert resolved.verification_type == VerificationType.HSAB
+    assert resolved.tpa_id == VerificationType.HSAB
     assert resolved.ignore_rules.transaction_hsab_mdc_ignored_character_ranges == (
         (20, 27),
         (45, 45),
@@ -74,8 +74,8 @@ def test_transaction_hsab_accepted(tmp_path: Path) -> None:
 def test_transaction_unsupported_gdi_rejected(tmp_path: Path) -> None:
     expected, actual = _paths(tmp_path)
     data = _base(expected, actual)
-    data["verification_type"] = "GDI"
-    with pytest.raises(ConfigurationError, match="Unsupported verification type"):
+    data["tpa_id"] = "GDI"
+    with pytest.raises(ConfigurationError, match="Unsupported tpa_id"):
         build_resolved_config(data)
 
 
@@ -83,14 +83,14 @@ def test_cli_override_solution_type(tmp_path: Path) -> None:
     expected, actual = _paths(tmp_path)
     data = _base(expected, actual)
     data["solution_type"] = "ClaimsXO"
-    data["verification_type"] = "GDI"
+    data["tpa_id"] = "GDI"
     resolved = build_resolved_config(
         data,
         solution_type_override="TransactionXO",
-        verification_type_override="HSAB",
+        tpa_id_override="HSAB",
     )
     assert resolved.solution_type == SolutionType.TRANSACTION_XO
-    assert resolved.verification_type == VerificationType.HSAB
+    assert resolved.tpa_id == VerificationType.HSAB
 
 
 def test_invalid_character_ranges() -> None:
@@ -106,7 +106,7 @@ def test_claimsxo_still_loads(tmp_path: Path) -> None:
     expected, actual = _paths(tmp_path)
     data = _base(expected, actual)
     data["solution_type"] = "ClaimsXO"
-    data["verification_type"] = "GDI"
+    data["tpa_id"] = "GDI"
     data["ignore_rules"] = {
         "ClaimsXO": {
             "GDI": {

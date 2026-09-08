@@ -35,7 +35,7 @@ class VerificationService:
 
     def __init__(self, config: ResolvedConfig) -> None:
         self._config = config
-        self._profile = get_solution_profile(config.solution_type, config.verification_type)
+        self._profile = get_solution_profile(config.solution_type, config.tpa_id)
         self._xml_comparator = XmlComparator()
         self._csv_comparator = CsvComparator()
         self._mbi_comparator = MbiComparator()
@@ -47,7 +47,7 @@ class VerificationService:
         LOGGER.info(
             "Starting verification. solution=%s type=%s expected=%s actual=%s",
             self._config.solution_type.value,
-            self._config.verification_type.value,
+            self._config.tpa_id.value,
             self._config.expected_parent_folder,
             self._config.actual_parent_folder,
         )
@@ -56,7 +56,7 @@ class VerificationService:
             self._config.expected_parent_folder,
             self._config.actual_parent_folder,
             self._config.solution_type,
-            self._config.verification_type,
+            self._config.tpa_id,
         )
         LOGGER.info("Scenario discovery count: %s", len(inventory))
 
@@ -249,7 +249,7 @@ class VerificationService:
         ignore_rules = self._config.ignore_rules
         ignore_key = pair.ignore_rule_key or ""
         solution = self._config.solution_type
-        verification = self._config.verification_type
+        verification = self._config.tpa_id
 
         if pair.file_format == FileFormat.XML:
             return ComparisonOptions(
@@ -303,7 +303,7 @@ class VerificationService:
         key = discovered.scenario_key
         return ReportRow(
             solution_type=self._config.solution_type.value,
-            verification_type=self._config.verification_type.value,
+            verification_type=self._config.tpa_id.value,
             scenario=key.display_scenario(),
             run_type=key.run_type,
             output_type=key.output_type.value,
@@ -325,7 +325,7 @@ class VerificationService:
         key = pair.scenario_key
         return ReportRow(
             solution_type=self._config.solution_type.value,
-            verification_type=self._config.verification_type.value,
+            verification_type=self._config.tpa_id.value,
             scenario=key.display_scenario(),
             run_type=key.run_type,
             output_type=key.output_type.value,

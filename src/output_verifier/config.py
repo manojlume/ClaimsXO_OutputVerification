@@ -43,7 +43,7 @@ def parse_verification_type(value: str) -> VerificationType:
         return VerificationType(normalized)
     except ValueError as error:
         raise ConfigurationError(
-            f"Unsupported verification type: {value}. Supported values: ABG, GDI, HSAB."
+            f"Unsupported tpa_id: {value}. Supported values: ABG, GDI, HSAB."
         ) from error
 
 
@@ -56,7 +56,7 @@ def validate_solution_verification_pair(
     if verification_type not in allowed:
         allowed_names = ", ".join(sorted(item.value for item in allowed))
         raise ConfigurationError(
-            f"Unsupported verification type {verification_type.value} for "
+            f"Unsupported tpa_id {verification_type.value} for "
             f"solution {solution_type.value}. Allowed: {allowed_names}."
         )
 

@@ -22,14 +22,14 @@ def _paths(tmp_path: Path) -> tuple[Path, Path]:
 def _base(expected: Path, actual: Path) -> dict:
     return {
         "solution_type": "ClaimsXO",
-        "verification_type": "GDI",
+        "tpa_id": "GDI",
         "expected_parent_folder": str(expected),
         "actual_parent_folder": str(actual),
         "report": {
             "output_folder": str(expected.parent / "reports"),
             "base_file_name": "VerificationReport",
             "include_solution_type": True,
-            "include_verification_type": True,
+            "include_tpa_id": True,
             "include_timestamp": True,
             "timestamp_format": "%Y%m%d%H%M%S",
             "status_colors": {
@@ -85,7 +85,7 @@ def test_nested_claims_gdi_ignore_rules(tmp_path: Path) -> None:
 def test_nested_claims_hsab_ignore_rules(tmp_path: Path) -> None:
     expected, actual = _paths(tmp_path)
     data = _base(expected, actual)
-    data["verification_type"] = "HSAB"
+    data["tpa_id"] = "HSAB"
     resolved = build_resolved_config(data)
     assert resolved.ignore_rules.claims_hsab_wex_xml_paths == ("/Root/@A",)
 
@@ -94,10 +94,10 @@ def test_nested_enrollment_ignore_rules(tmp_path: Path) -> None:
     expected, actual = _paths(tmp_path)
     data = _base(expected, actual)
     data["solution_type"] = "EnrollmentXO"
-    data["verification_type"] = "ABG"
+    data["tpa_id"] = "ABG"
     resolved = build_resolved_config(data)
     assert resolved.solution_type == SolutionType.ENROLLMENT_XO
-    assert resolved.verification_type == VerificationType.ABG
+    assert resolved.tpa_id == VerificationType.ABG
     assert resolved.ignore_rules.enrollment_abg_alegeus_mbi_field_positions == (2,)
     assert resolved.ignore_rules.enrollment_abg_report_csv_columns == ("Timestamp",)
     assert resolved.ignore_rules.enrollment_gdi_wexhealth_field_positions == (3,)
@@ -134,6 +134,6 @@ def test_invalid_verification_for_enrollment(tmp_path: Path) -> None:
     expected, actual = _paths(tmp_path)
     data = _base(expected, actual)
     data["solution_type"] = "ClaimsXO"
-    data["verification_type"] = "ABG"
-    with pytest.raises(ConfigurationError, match="Unsupported verification type"):
+    data["tpa_id"] = "ABG"
+    with pytest.raises(ConfigurationError, match="Unsupported tpa_id"):
         build_resolved_config(data)

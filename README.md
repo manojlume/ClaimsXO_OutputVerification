@@ -137,7 +137,7 @@ Template: `config.yaml`
 Important settings:
 
 - `solution_type`: `ClaimsXO`, `EnrollmentXO`, or `TransactionXO`
-- `verification_type`: allowed for that solution (ClaimsXO: GDI/HSAB; EnrollmentXO: ABG/GDI/HSAB; TransactionXO: HSAB)
+- `tpa_id`: allowed for that solution (ClaimsXO: GDI/HSAB; EnrollmentXO: ABG/GDI/HSAB; TransactionXO: HSAB)
 - `expected_parent_folder` / `actual_parent_folder`
 - `report.*` report naming, folder, and status colors
 - `logging.*` console/file logging with rotation
@@ -184,24 +184,24 @@ Development run (from repository root):
 
 ```bat
 set PYTHONPATH=src
-python -m output_verifier --config config.yaml --solution-type ClaimsXO --verification-type GDI --expected-parent-folder "H:\ExpectedOutputs" --actual-parent-folder "H:\ActualOutputs"
+python -m output_verifier --config config.yaml --solution-type ClaimsXO --tpa-id GDI --expected-parent-folder "H:\ExpectedOutputs" --actual-parent-folder "H:\ActualOutputs"
 
-python -m output_verifier --config config.yaml --solution-type EnrollmentXO --verification-type ABG --expected-parent-folder "H:\Expected" --actual-parent-folder "H:\Actual"
+python -m output_verifier --config config.yaml --solution-type EnrollmentXO --tpa-id ABG --expected-parent-folder "H:\Expected" --actual-parent-folder "H:\Actual"
 
-python -m output_verifier --config config.yaml --solution-type TransactionXO --verification-type HSAB --expected-parent-folder "H:\ExpectedOutputs\TransactionXO\HSAB" --actual-parent-folder "H:\ActualOutputs\TransactionXO\HSAB"
+python -m output_verifier --config config.yaml --solution-type TransactionXO --tpa-id HSAB --expected-parent-folder "H:\ExpectedOutputs\TransactionXO\HSAB" --actual-parent-folder "H:\ActualOutputs\TransactionXO\HSAB"
 ```
 
 Or use the helper script:
 
 ```bat
-run-output-verifier.cmd --solution-type ClaimsXO --verification-type GDI --expected-parent-folder "H:\ExpectedOutputs" --actual-parent-folder "H:\ActualOutputs"
+run-output-verifier.cmd --solution-type ClaimsXO --tpa-id GDI --expected-parent-folder "H:\ExpectedOutputs" --actual-parent-folder "H:\ActualOutputs"
 ```
 
 CLI overrides (override YAML):
 
 - `--config`
 - `--solution-type`
-- `--verification-type`
+- `--tpa-id`
 - `--expected-parent-folder`
 - `--actual-parent-folder`
 - `--report-output-folder`
@@ -324,7 +324,7 @@ Important: `config.yaml` is **not** embedded inside `output-verifier.exe`. Edit 
 Run the built executable:
 
 ```bat
-dist\output-verifier.exe --config dist\config.yaml --verification-type GDI --expected-parent-folder "H:\ExpectedOutputs" --actual-parent-folder "H:\ActualOutputs"
+dist\output-verifier.exe --config dist\config.yaml --tpa-id GDI --expected-parent-folder "H:\ExpectedOutputs" --actual-parent-folder "H:\ActualOutputs"
 ```
 ## Troubleshooting
 
@@ -364,14 +364,14 @@ REM GDI verification
 set PYTHONPATH=src
 python -m output_verifier ^
   --config "config.yaml" ^
-  --verification-type "GDI" ^
+  --tpa-id "GDI" ^
   --expected-parent-folder "H:\ExpectedOutputs" ^
   --actual-parent-folder "H:\ActualOutputs"
 
 REM HSAB verification with report and log overrides
 python -m output_verifier ^
   --config "config.yaml" ^
-  --verification-type "HSAB" ^
+  --tpa-id "HSAB" ^
   --expected-parent-folder "H:\ExpectedOutputs" ^
   --actual-parent-folder "H:\ActualOutputs" ^
   --report-output-folder "H:\Reports" ^

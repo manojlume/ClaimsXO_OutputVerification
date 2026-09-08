@@ -39,7 +39,7 @@ DEFAULT_REPORT: dict[str, Any] = {
     "output_folder": "./reports",
     "base_file_name": "VerificationReport",
     "include_solution_type": True,
-    "include_verification_type": True,
+    "include_tpa_id": True,
     "include_timestamp": True,
     "timestamp_format": "%Y%m%d%H%M%S",
     "status_colors": {
@@ -90,6 +90,26 @@ def _merge_section(defaults: dict[str, Any], overrides: dict[str, Any] | None) -
         else:
             merged[key] = value
     return merged
+
+
+def _yaml_tpa_id(data: dict[str, Any]) -> Any:
+    if "tpa_id" in data:
+        return data.get("tpa_id")
+    if "verification_type" in data:
+        LOGGER.warning("YAML key verification_type is deprecated. Use tpa_id.")
+        return data.get("verification_type")
+    return None
+
+
+def _report_include_tpa_id(report_section: dict[str, Any]) -> bool:
+    if "include_tpa_id" in report_section:
+        return bool(report_section.get("include_tpa_id"))
+    if "include_verification_type" in report_section:
+        LOGGER.warning(
+            "YAML key report.include_verification_type is deprecated. Use include_tpa_id."
+        )
+        return bool(report_section.get("include_verification_type"))
+    return True
 
 
 def _as_mapping(value: Any, field_name: str) -> dict[str, Any]:
@@ -251,7 +271,7 @@ def build_resolved_config(
     *,
     config_path: Path | None = None,
     solution_type_override: str | None = None,
-    verification_type_override: str | None = None,
+    tpa_id_override: str | None = None,
     expected_parent_folder_override: str | None = None,
     actual_parent_folder_override: str | None = None,
     report_output_folder_override: str | None = None,
@@ -268,15 +288,13 @@ def build_resolved_config(
     )
     solution_type = parse_solution_type(solution_raw)
 
-    verification_type_raw = (
-        verification_type_override
-        if verification_type_override is not None
-        else data.get("verification_type")
+    tpa_id_raw = (
+        tpa_id_override if tpa_id_override is not None else _yaml_tpa_id(data)
     )
-    if not verification_type_raw:
-        raise ConfigurationError("verification_type is required.")
-    verification_type = parse_verification_type(str(verification_type_raw))
-    validate_solution_verification_pair(solution_type, verification_type)
+    if not tpa_id_raw:
+        raise ConfigurationError("tpa_id is required.")
+    tpa_id = parse_verification_type(str(tpa_id_raw))
+    validate_solution_verification_pair(solution_type, tpa_id)
 
     expected_raw = (
         expected_parent_folder_override
@@ -339,7 +357,7 @@ def build_resolved_config(
 
     return ResolvedConfig(
         solution_type=solution_type,
-        verification_type=verification_type,
+        tpa_id=tpa_id,
         expected_parent_folder=expected_parent.resolve()
         if expected_parent.exists()
         else expected_parent,
@@ -348,7 +366,7 @@ def build_resolved_config(
             output_folder=report_output_folder,
             base_file_name=str(report_section.get("base_file_name", "VerificationReport")),
             include_solution_type=bool(report_section.get("include_solution_type", True)),
-            include_verification_type=bool(report_section.get("include_verification_type", True)),
+            include_tpa_id=_report_include_tpa_id(report_section),
             include_timestamp=bool(report_section.get("include_timestamp", True)),
             timestamp_format=validate_timestamp_format(
                 report_section.get("timestamp_format", "%Y%m%d%H%M%S")
@@ -380,7 +398,7 @@ def load_resolved_config(
     config_path: Path,
     *,
     solution_type_override: str | None = None,
-    verification_type_override: str | None = None,
+    tpa_id_override: str | None = None,
     expected_parent_folder_override: str | None = None,
     actual_parent_folder_override: str | None = None,
     report_output_folder_override: str | None = None,
@@ -393,7 +411,7 @@ def load_resolved_config(
         yaml_data,
         config_path=config_path,
         solution_type_override=solution_type_override,
-        verification_type_override=verification_type_override,
+        tpa_id_override=tpa_id_override,
         expected_parent_folder_override=expected_parent_folder_override,
         actual_parent_folder_override=actual_parent_folder_override,
         report_output_folder_override=report_output_folder_override,

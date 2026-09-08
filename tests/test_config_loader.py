@@ -20,13 +20,13 @@ def _write_config(path: Path, data: dict) -> Path:
 def _base_config(expected: Path, actual: Path) -> dict:
     return {
         "solution_type": "ClaimsXO",
-        "verification_type": "GDI",
+        "tpa_id": "GDI",
         "expected_parent_folder": str(expected),
         "actual_parent_folder": str(actual),
         "report": {
             "output_folder": str(expected.parent / "reports"),
             "base_file_name": "VerificationReport",
-            "include_verification_type": True,
+            "include_tpa_id": True,
             "include_timestamp": True,
             "timestamp_format": "%Y%m%d%H%M%S",
             "status_colors": {
@@ -64,7 +64,7 @@ def test_valid_yaml(tmp_path: Path) -> None:
 
     resolved = load_resolved_config(config_file, validate_parent_folders=True)
 
-    assert resolved.verification_type == VerificationType.GDI
+    assert resolved.tpa_id == VerificationType.GDI
     assert resolved.expected_parent_folder == expected.resolve()
     assert resolved.actual_parent_folder == actual.resolve()
 
@@ -92,12 +92,12 @@ def test_cli_override(tmp_path: Path) -> None:
 
     resolved = build_resolved_config(
         data,
-        verification_type_override="HSAB",
+        tpa_id_override="HSAB",
         expected_parent_folder_override=str(other_expected),
         log_level_override="DEBUG",
     )
 
-    assert resolved.verification_type == VerificationType.HSAB
+    assert resolved.tpa_id == VerificationType.HSAB
     assert resolved.expected_parent_folder == other_expected.resolve()
     assert resolved.logging.level == "DEBUG"
 
@@ -115,8 +115,8 @@ def test_unsupported_verification_type(tmp_path: Path) -> None:
     expected.mkdir()
     actual.mkdir()
     data = _base_config(expected, actual)
-    data["verification_type"] = "UNKNOWN"
-    with pytest.raises(ConfigurationError, match="Unsupported verification type"):
+    data["tpa_id"] = "UNKNOWN"
+    with pytest.raises(ConfigurationError, match="Unsupported tpa_id"):
         build_resolved_config(data)
 
 
@@ -162,3 +162,18 @@ def test_invalid_xpath_syntax(tmp_path: Path) -> None:
     data["ignore_rules"]["GDI"]["lh1_xml_paths"] = ["//["]
     with pytest.raises(ConfigurationError, match="Invalid XPath"):
         build_resolved_config(data)
+
+
+def test_legacy_verification_type_yaml_still_loads(tmp_path: Path) -> None:
+    expected = tmp_path / "expected"
+    actual = tmp_path / "actual"
+    expected.mkdir()
+    actual.mkdir()
+    data = _base_config(expected, actual)
+    data.pop("tpa_id")
+    data["verification_type"] = "HSAB"
+    data["report"].pop("include_tpa_id")
+    data["report"]["include_verification_type"] = True
+    resolved = build_resolved_config(data)
+    assert resolved.tpa_id == VerificationType.HSAB
+    assert resolved.report.include_tpa_id is True

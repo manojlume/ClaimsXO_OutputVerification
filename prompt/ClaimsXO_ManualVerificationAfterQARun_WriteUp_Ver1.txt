@@ -325,3 +325,4 @@ Failed:
 NotVerified:
 
 - Both Expected and Actual folders contain no supported files.
+
