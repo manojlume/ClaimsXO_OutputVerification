@@ -170,6 +170,9 @@ GDI_REPROCESS_MANUAL_PATIENT_PATTERN = re.compile(
     r"^GDI_REPROCESS_MANUAL_PATIENT_(\d{14})\.csv$", re.IGNORECASE
 )
 GDI_MBI_PATTERN = re.compile(r"^LumeLight\.ClaimFeed\.(\d{14})\.mbi$", re.IGNORECASE)
+GDI_REPROCESS_MBI_PATTERN = re.compile(
+    r"^LumeLight\.Reprocess\.ClaimFeed\.(\d{14})\.mbi$", re.IGNORECASE
+)
 HSAB_HB1_PATTERN = re.compile(r"^HB1_HSAB_CLAIMS_(\d{14})\.xml$", re.IGNORECASE)
 HSAB_HB2_PATTERN = re.compile(r"^HB2_HSAB_CLAIMS_(\d{14})\.xml$", re.IGNORECASE)
 
@@ -358,6 +361,15 @@ CLAIMS_XO_GDI_PROFILE = SolutionProfile(
                 FilenameRule(
                     pattern=GDI_MBI_PATTERN,
                     normalized_template=f"LumeLight.ClaimFeed.{DATETIME_TOKEN}.mbi",
+                    file_format=FileFormat.MBI,
+                    ignore_rule_key="mbi_field_positions",
+                    delimiter=MBI_DELIMITER,
+                    has_header=False,
+                    compare_trailing_empty_fields=True,
+                ),
+                FilenameRule(
+                    pattern=GDI_REPROCESS_MBI_PATTERN,
+                    normalized_template=f"LumeLight.Reprocess.ClaimFeed.{DATETIME_TOKEN}.mbi",
                     file_format=FileFormat.MBI,
                     ignore_rule_key="mbi_field_positions",
                     delimiter=MBI_DELIMITER,

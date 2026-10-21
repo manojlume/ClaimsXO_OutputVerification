@@ -174,6 +174,7 @@ Application constants, enums, filename patterns, and TPA profile registry.
 | `GDI_REPROCESS_MANUAL_PATTERN` | `GDI_REPROCESS_MANUAL_<dt>.csv` |
 | `GDI_REPROCESS_MANUAL_PATIENT_PATTERN` | `GDI_REPROCESS_MANUAL_PATIENT_<dt>.csv` |
 | `GDI_MBI_PATTERN` | `LumeLight.ClaimFeed.<dt>.mbi` |
+| `GDI_REPROCESS_MBI_PATTERN` | `LumeLight.Reprocess.ClaimFeed.<dt>.mbi` |
 | `HSAB_HB1_PATTERN` / `HSAB_HB2_PATTERN` | WEX XML claims files |
 | `ABG_EXPORT_MBI_PATTERN` / `ABG_*_REPORT_PATTERN` | Enrollment ABG files |
 | `ENROLLMENT_GDI_*` / `ENROLLMENT_HSAB_*` | Enrollment GDI/HSAB files |

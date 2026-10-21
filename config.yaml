@@ -7,8 +7,6 @@ actual_parent_folder: 'H:\Work\GitHubApp\OutputVerification_ClaimsXO\ActualOutpu
 #expected_parent_folder: 'H:\Work\GitHubApp\OutputVerification_ClaimsXO\ExpectedOutput\ClaimsXO\HSAB'
 #actual_parent_folder: 'H:\Work\GitHubApp\OutputVerification_ClaimsXO\ActualOutput\ClaimsXO\HSAB\20260730_085924_fullrun'
 
-expected_parent_folder: 'H:\Documents\EligbilityXO\HSAB\MBI File to MDC\ExpectedOuput'
-actual_parent_folder: 'H:\QA_SemiAutomation\TestOutput\TransactionXO\HSAB\20260805_112511'
 
 report:
   base_file_name: "VerificationReport"

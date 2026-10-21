@@ -208,6 +208,40 @@ def test_reprocess_manual_does_not_match_patient(tmp_path: Path) -> None:
     }
 
 
+def test_reprocess_claimfeed_mbi_matches(tmp_path: Path) -> None:
+    expected = tmp_path / "LumeLight.Reprocess.ClaimFeed.20261021105047.mbi"
+    actual = tmp_path / "LumeLight.Reprocess.ClaimFeed.20261021110000.mbi"
+    expected.write_text("A|B\n", encoding="utf-8")
+    actual.write_text("A|B\n", encoding="utf-8")
+
+    pairs = match_files_for_output(
+        _discovered([expected], [actual], OutputType.ALG),
+        GDI_PROFILE,
+    )
+    assert len(pairs) == 1
+    assert pairs[0].is_valid_pattern
+    assert pairs[0].normalized_identity == "LumeLight.Reprocess.ClaimFeed.<datetime>.mbi"
+    assert pairs[0].file_format.value == "mbi"
+
+
+def test_reprocess_claimfeed_does_not_match_claimfeed(tmp_path: Path) -> None:
+    expected = tmp_path / "LumeLight.ClaimFeed.20261021105047.mbi"
+    actual = tmp_path / "LumeLight.Reprocess.ClaimFeed.20261021105047.mbi"
+    expected.write_text("A|B\n", encoding="utf-8")
+    actual.write_text("A|B\n", encoding="utf-8")
+
+    pairs = match_files_for_output(
+        _discovered([expected], [actual], OutputType.ALG),
+        GDI_PROFILE,
+    )
+    assert len(pairs) == 2
+    identities = {pair.normalized_identity for pair in pairs}
+    assert identities == {
+        "LumeLight.ClaimFeed.<datetime>.mbi",
+        "LumeLight.Reprocess.ClaimFeed.<datetime>.mbi",
+    }
+
+
 def test_normalize_filename_identity() -> None:
     assert (
         normalize_filename_identity("LumeLight.ClaimFeed.20260730110000.mbi")

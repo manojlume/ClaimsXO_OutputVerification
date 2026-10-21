@@ -86,7 +86,7 @@ Old top-level `ignore_rules.GDI` / `ignore_rules.HSAB` still loads temporarily f
 
 - `LH1`: `GDI_LH1_<datetime>.xml`, `GDI_LH1_MMS_<datetime>.xml`, `GDI_LH1_FLORES_<datetime>.xml`, `GDI_LH1_HNE_<datetime>.xml`, `GDI_REGEN_LH1_<datetime>.xml`, `GDI_REPROCESS_LH1_<datetime>.xml`, `GDI_REPROCESS_LH1_MMS_<datetime>.xml`, `GDI_REPROCESS_LH1_FLORES_<datetime>.xml`, `GDI_REPROCESS_LH1_HNE_<datetime>.xml`
 - `manual`: `GDI_MANUAL_<datetime>.csv`, `GDI_MANUAL_PATIENT_<datetime>.csv`, `GDI_REPROCESS_MANUAL_<datetime>.csv`, `GDI_REPROCESS_MANUAL_PATIENT_<datetime>.csv`
-- `ALG`: `LumeLight.ClaimFeed.<datetime>.mbi`
+- `ALG`: `LumeLight.ClaimFeed.<datetime>.mbi`, `LumeLight.Reprocess.ClaimFeed.<datetime>.mbi`
 
 ### Supported HSAB files
 
