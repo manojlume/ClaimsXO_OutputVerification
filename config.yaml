@@ -1,5 +1,8 @@
 solution_type: ClaimsXO # ClaimsXO, EnrollmentXO, or TransactionXO
 tpa_id: HSAB # ClaimsXO: GDI/HSAB | EnrollmentXO: ABG/GDI/HSAB | TransactionXO: HSAB
+# Comma-separated run folders to compare. Empty compares all: current, pre, prepre, hold
+# Examples: current    or    current, pre
+run_folders: ""
 
 expected_parent_folder: 'H:\Work\GitHubApp\OutputVerification_ClaimsXO\ExpectedOutput\ClaimsXO\GDI'
 actual_parent_folder: 'H:\Work\GitHubApp\OutputVerification_ClaimsXO\ActualOutput\ClaimsXO\GDI\20260612_000022_fullrun_modified_For_testing'

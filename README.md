@@ -139,6 +139,7 @@ Important settings:
 - `solution_type`: `ClaimsXO`, `EnrollmentXO`, or `TransactionXO`
 - `tpa_id`: allowed for that solution (ClaimsXO: GDI/HSAB; EnrollmentXO: ABG/GDI/HSAB; TransactionXO: HSAB)
 - `expected_parent_folder` / `actual_parent_folder`
+- `run_folders`: optional comma-separated run folders to compare (`current`, `pre`, `prepre`, `hold`). Empty compares all of them. Matching is case-insensitive.
 - `report.*` report naming, folder, and status colors
 - `logging.*` console/file logging with rotation
 - `ignore_rules.<Solution>.<Verification>` nested ignore lists

@@ -152,3 +152,19 @@ def test_mixed_statuses(tmp_path: Path) -> None:
     assert VerificationStatus.FAILED in statuses
     assert VerificationStatus.NOT_VERIFIED in statuses
     assert exit_code == ExitCode.COMPARISON_FAILURE
+
+
+def test_empty_run_folder_on_both_sides_is_not_verified(tmp_path: Path) -> None:
+    expected = tmp_path / "expected"
+    actual = tmp_path / "actual"
+    (expected / "test_tickets" / "test_ticket_81243" / "current").mkdir(parents=True)
+    (actual / "test_tickets" / "test_ticket_81243" / "current").mkdir(parents=True)
+
+    rows, exit_code = VerificationService(_config(tmp_path, expected, actual)).run()
+    assert exit_code == ExitCode.SUCCESS
+    assert len(rows) == 1
+    assert rows[0].status == VerificationStatus.NOT_VERIFIED
+    assert rows[0].issue == "No files available for verification"
+    assert rows[0].scenario == "test_tickets\\test_ticket_81243"
+    assert rows[0].run_type == "current"
+    assert rows[0].output_type == ""

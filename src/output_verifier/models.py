@@ -174,6 +174,7 @@ class ResolvedConfig:
     logging: LoggingConfig
     ignore_rules: IgnoreRulesConfig
     config_path: Path | None = None
+    run_folders: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

@@ -52,6 +52,7 @@ class OutputType(str, Enum):
     HSAB_ENROLLMENT_IMPORT = "HSABEnrollmentImport"
     MDC = "MDC"
     MDC_EXCEPTIONS = "MDCExceptions"
+    NONE = ""
 
 
 class RunType(str, Enum):

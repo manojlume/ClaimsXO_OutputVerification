@@ -12,6 +12,7 @@ import yaml
 from output_verifier.config import (
     ConfigurationError,
     ensure_creatable_directory,
+    parse_run_folders,
     parse_solution_type,
     parse_verification_type,
     require_existing_directory,
@@ -391,6 +392,7 @@ def build_resolved_config(
         ),
         ignore_rules=ignore_rules,
         config_path=config_path,
+        run_folders=parse_run_folders(data.get("run_folders")),
     )
 
 

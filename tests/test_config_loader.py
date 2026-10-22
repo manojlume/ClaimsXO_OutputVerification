@@ -153,6 +153,39 @@ def test_invalid_mbi_position(tmp_path: Path) -> None:
         build_resolved_config(data)
 
 
+def test_run_folders_comma_separated(tmp_path: Path) -> None:
+    expected = tmp_path / "expected"
+    actual = tmp_path / "actual"
+    expected.mkdir()
+    actual.mkdir()
+    data = _base_config(expected, actual)
+    data["run_folders"] = "Current, pre"
+    resolved = build_resolved_config(data)
+    assert resolved.run_folders == ("current", "pre")
+
+
+def test_empty_run_folders_means_all(tmp_path: Path) -> None:
+    expected = tmp_path / "expected"
+    actual = tmp_path / "actual"
+    expected.mkdir()
+    actual.mkdir()
+    data = _base_config(expected, actual)
+    data["run_folders"] = ""
+    resolved = build_resolved_config(data)
+    assert resolved.run_folders == ()
+
+
+def test_unsupported_run_folder(tmp_path: Path) -> None:
+    expected = tmp_path / "expected"
+    actual = tmp_path / "actual"
+    expected.mkdir()
+    actual.mkdir()
+    data = _base_config(expected, actual)
+    data["run_folders"] = "current, draft"
+    with pytest.raises(ConfigurationError, match="Unsupported run folder"):
+        build_resolved_config(data)
+
+
 def test_invalid_xpath_syntax(tmp_path: Path) -> None:
     expected = tmp_path / "expected"
     actual = tmp_path / "actual"

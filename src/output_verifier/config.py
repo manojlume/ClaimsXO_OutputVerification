@@ -10,6 +10,7 @@ from lxml import etree
 
 from output_verifier.constants import (
     HEX_COLOR_PATTERN,
+    SUPPORTED_RUN_FOLDERS,
     SolutionType,
     VALID_LOG_LEVELS,
     VerificationType,
@@ -107,6 +108,47 @@ def validate_timestamp_format(value: Any) -> str:
     except (ValueError, TypeError) as error:
         raise ConfigurationError(f"Invalid report.timestamp_format: {value!r}.") from error
     return value
+
+
+def parse_run_folders(value: Any) -> tuple[str, ...]:
+    """
+    Parse run folders to compare.
+
+    Empty or omitted means every supported run folder.
+    Accepts a comma-separated string or a YAML list. Matching is case-insensitive.
+    """
+    if value is None:
+        return ()
+    if isinstance(value, str):
+        raw_items = [item.strip() for item in value.split(",")]
+    elif isinstance(value, list):
+        raw_items = []
+        for item in value:
+            if not isinstance(item, str):
+                raise ConfigurationError(
+                    f"run_folders must contain folder names, found: {item!r}."
+                )
+            raw_items.append(item.strip())
+    else:
+        raise ConfigurationError(
+            "run_folders must be a comma-separated string or a list of folder names."
+        )
+
+    selected: list[str] = []
+    seen: set[str] = set()
+    for item in raw_items:
+        if not item:
+            continue
+        normalized = item.lower()
+        if normalized not in SUPPORTED_RUN_FOLDERS:
+            allowed = ", ".join(sorted(SUPPORTED_RUN_FOLDERS))
+            raise ConfigurationError(
+                f"Unsupported run folder in run_folders: {item!r}. Allowed: {allowed}."
+            )
+        if normalized not in seen:
+            seen.add(normalized)
+            selected.append(normalized)
+    return tuple(selected)
 
 
 def validate_string_list(field_name: str, value: Any) -> tuple[str, ...]:

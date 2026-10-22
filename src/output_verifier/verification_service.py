@@ -57,6 +57,7 @@ class VerificationService:
             self._config.actual_parent_folder,
             self._config.solution_type,
             self._config.tpa_id,
+            self._config.run_folders,
         )
         LOGGER.info("Scenario discovery count: %s", len(inventory))
 
