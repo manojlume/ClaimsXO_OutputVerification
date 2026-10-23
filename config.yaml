@@ -1,6 +1,7 @@
 solution_type: ClaimsXO # ClaimsXO, EnrollmentXO, or TransactionXO
 tpa_id: HSAB # ClaimsXO: GDI/HSAB | EnrollmentXO: ABG/GDI/HSAB | TransactionXO: HSAB
 # Comma-separated run folders to compare. Empty compares all: current, pre, prepre, hold
+# hold is only current\LH1\Hold
 # Examples: current    or    current, pre
 run_folders: ""
 

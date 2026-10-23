@@ -76,6 +76,29 @@ def test_failed_content_mismatch(tmp_path: Path) -> None:
     assert any(row.status == VerificationStatus.FAILED for row in rows)
 
 
+def test_lh1_with_only_hold_is_not_marked_not_verified(tmp_path: Path) -> None:
+    expected = tmp_path / "expected"
+    actual = tmp_path / "actual"
+    xml = "<Root><Item>A</Item></Root>"
+    _touch(
+        expected / "test_regen" / "current" / "LH1" / "Hold" / "GDI_REGEN_LH1_20260511031103.xml",
+        xml,
+    )
+    _touch(
+        actual / "test_regen" / "current" / "LH1" / "Hold" / "GDI_REGEN_LH1_20261021235718.xml",
+        xml,
+    )
+
+    rows, exit_code = VerificationService(_config(tmp_path, expected, actual)).run()
+    assert exit_code == ExitCode.SUCCESS
+    assert len(rows) == 1
+    assert rows[0].run_type == "hold"
+    assert rows[0].output_type == "LH1"
+    assert rows[0].status == VerificationStatus.PASSED
+    assert rows[0].expected_file == "GDI_REGEN_LH1_20260511031103.xml"
+    assert rows[0].actual_file == "GDI_REGEN_LH1_20261021235718.xml"
+
+
 def test_not_verified_empty(tmp_path: Path) -> None:
     expected = tmp_path / "expected"
     actual = tmp_path / "actual"

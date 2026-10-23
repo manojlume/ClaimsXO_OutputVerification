@@ -9,6 +9,7 @@ from output_verifier.constants import (
     OUTPUT_TYPE_CANONICAL,
     SUPPORTED_RUN_FOLDERS,
     OutputType,
+    RunType,
     SolutionProfile,
     SolutionType,
     VerificationType,
@@ -18,6 +19,9 @@ from output_verifier.models import DiscoveredOutput, ScenarioKey
 from output_verifier.utilities.filename_utils import has_supported_extension
 
 LOGGER = logging.getLogger(__name__)
+
+# Hold is not a sibling of current/pre/prepre. It is only current\LH1\Hold.
+PEER_RUN_FOLDERS: frozenset[str] = SUPPORTED_RUN_FOLDERS - {RunType.HOLD.value}
 
 
 def _canonicalize_run_type(folder_name: str, allowed_run_folders: frozenset[str]) -> str | None:
@@ -32,6 +36,17 @@ def _canonicalize_output_type(folder_name: str, profile: SolutionProfile):
     if lowered not in profile.supported_output_folder_names():
         return None
     return OUTPUT_TYPE_CANONICAL.get(lowered)
+
+
+def _find_hold_folder(output_folder: Path) -> Path | None:
+    """Return current\\LH1\\Hold when that child folder exists."""
+    try:
+        for child in output_folder.iterdir():
+            if child.is_dir() and child.name.lower() == RunType.HOLD.value:
+                return child
+    except OSError as error:
+        LOGGER.error("Unable to read output folder %s: %s", output_folder, error)
+    return None
 
 
 def _collect_direct_files(
@@ -63,6 +78,10 @@ def discover_output_locations(
     """
     profile = get_solution_profile(solution_type, verification_type)
     allowed_run_folders = frozenset(run_folders) if run_folders else SUPPORTED_RUN_FOLDERS
+    include_hold = RunType.HOLD.value in allowed_run_folders
+    peer_allowed = allowed_run_folders & PEER_RUN_FOLDERS
+    if include_hold:
+        peer_allowed = peer_allowed | {RunType.CURRENT.value}
     discovered: dict[ScenarioKey, Path] = {}
 
     if not root.exists():
@@ -73,7 +92,7 @@ def discover_output_locations(
         if not current_path.is_dir():
             continue
 
-        run_type = _canonicalize_run_type(current_path.name, allowed_run_folders)
+        run_type = _canonicalize_run_type(current_path.name, peer_allowed)
         if run_type is None:
             continue
 
@@ -95,28 +114,60 @@ def discover_output_locations(
             if output_type is None:
                 continue
 
-            scenario_key = ScenarioKey(
+            if run_type in allowed_run_folders:
+                scenario_key = ScenarioKey(
+                    scenario_path=scenario_path,
+                    run_type=run_type,
+                    output_type=output_type,
+                )
+                if scenario_key in discovered:
+                    LOGGER.warning(
+                        "Duplicate scenario location for %s; keeping first path %s, ignoring %s",
+                        scenario_key,
+                        discovered[scenario_key],
+                        child,
+                    )
+                else:
+                    discovered[scenario_key] = child
+                    LOGGER.debug(
+                        "Discovered %s/%s output folder: scenario=%s run=%s output=%s path=%s",
+                        solution_type.value,
+                        verification_type.value,
+                        scenario_path,
+                        run_type,
+                        output_type.value,
+                        child,
+                    )
+
+            if not (
+                include_hold
+                and run_type == RunType.CURRENT.value
+                and output_type == OutputType.LH1
+            ):
+                continue
+            hold_folder = _find_hold_folder(child)
+            if hold_folder is None:
+                continue
+            hold_key = ScenarioKey(
                 scenario_path=scenario_path,
-                run_type=run_type,
-                output_type=output_type,
+                run_type=RunType.HOLD.value,
+                output_type=OutputType.LH1,
             )
-            if scenario_key in discovered:
+            if hold_key in discovered:
                 LOGGER.warning(
                     "Duplicate scenario location for %s; keeping first path %s, ignoring %s",
-                    scenario_key,
-                    discovered[scenario_key],
-                    child,
+                    hold_key,
+                    discovered[hold_key],
+                    hold_folder,
                 )
                 continue
-            discovered[scenario_key] = child
+            discovered[hold_key] = hold_folder
             LOGGER.debug(
-                "Discovered %s/%s output folder: scenario=%s run=%s output=%s path=%s",
+                "Discovered %s/%s Hold folder: scenario=%s path=%s",
                 solution_type.value,
                 verification_type.value,
                 scenario_path,
-                run_type,
-                output_type.value,
-                child,
+                hold_folder,
             )
 
     LOGGER.info(
@@ -133,6 +184,7 @@ def discover_run_locations(
 ) -> dict[tuple[str, str], Path]:
     """Return supported run folders keyed by scenario path and run type."""
     allowed_run_folders = frozenset(run_folders) if run_folders else SUPPORTED_RUN_FOLDERS
+    peer_allowed = allowed_run_folders & PEER_RUN_FOLDERS
     discovered: dict[tuple[str, str], Path] = {}
     if not root.exists():
         return discovered
@@ -140,7 +192,7 @@ def discover_run_locations(
     for current_path in root.rglob("*"):
         if not current_path.is_dir():
             continue
-        run_type = _canonicalize_run_type(current_path.name, allowed_run_folders)
+        run_type = _canonicalize_run_type(current_path.name, peer_allowed)
         if run_type is None:
             continue
         try:
@@ -153,6 +205,27 @@ def discover_run_locations(
         if key not in discovered:
             discovered[key] = current_path
     return discovered
+
+
+def _skip_empty_current_lh1(
+    scenario_key: ScenarioKey,
+    expected_files: tuple[Path, ...],
+    actual_files: tuple[Path, ...],
+    hold_scenarios: set[str],
+) -> bool:
+    """
+    current\\LH1 with no direct files is only a container for current\\LH1\\Hold.
+
+    Those files are verified on the hold row. Do not also report the empty LH1
+    folder as NotVerified.
+    """
+    return (
+        scenario_key.run_type == RunType.CURRENT.value
+        and scenario_key.output_type == OutputType.LH1
+        and not expected_files
+        and not actual_files
+        and scenario_key.scenario_path in hold_scenarios
+    )
 
 
 def build_scenario_inventory(
@@ -179,6 +252,11 @@ def build_scenario_inventory(
         set(expected_map.keys()) | set(actual_map.keys()),
         key=lambda key: (key.scenario_path.lower(), key.run_type, key.output_type.value),
     )
+    hold_scenarios = {
+        key.scenario_path
+        for key in all_keys
+        if key.run_type == RunType.HOLD.value and key.output_type == OutputType.LH1
+    }
 
     inventory: list[DiscoveredOutput] = []
     for scenario_key in all_keys:
@@ -194,6 +272,12 @@ def build_scenario_inventory(
             if actual_folder
             else ()
         )
+        if _skip_empty_current_lh1(scenario_key, expected_files, actual_files, hold_scenarios):
+            LOGGER.debug(
+                "Skipping empty current LH1 because Hold exists: scenario=%s",
+                scenario_key.scenario_path,
+            )
+            continue
         inventory.append(
             DiscoveredOutput(
                 scenario_key=scenario_key,
