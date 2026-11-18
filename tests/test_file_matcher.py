@@ -63,6 +63,54 @@ def test_hb1_does_not_match_hb2(tmp_path: Path) -> None:
     }
 
 
+def test_hsab_xofilter_trigger_datetime_match(tmp_path: Path) -> None:
+    content = (
+        "12201000322N12683    TORRE1S             JULIA1          "
+        "22050124123124123149                       \n"
+    )
+    expected = tmp_path / "HCSC-BCBSIL-FSA-Eligibility-File_20260730110000.txt"
+    actual = tmp_path / "HCSC-BCBSIL-FSA-Eligibility-File_20260730120000.txt"
+    expected.write_text(content, encoding="utf-8")
+    actual.write_text(content, encoding="utf-8")
+
+    pairs = match_files_for_output(
+        _discovered([expected], [actual], OutputType.XO_FILTER),
+        HSAB_PROFILE,
+    )
+
+    assert len(pairs) == 1
+    assert pairs[0].normalized_identity == (
+        "HCSC-BCBSIL-FSA-Eligibility-File_<datetime>.txt"
+    )
+    assert pairs[0].is_valid_pattern
+    assert pairs[0].has_header is False
+    assert pairs[0].file_format.value == "fixed_width"
+
+
+def test_hsab_xofilter_trigger_eight_digit_date_match(tmp_path: Path) -> None:
+    content = (
+        "12201000322N12683    TORRE1S             JULIA1          "
+        "22050124123124123149                       \n"
+    )
+    expected = tmp_path / "HCSC-BCBSIL-FSA-Eligibility-File_20261018.txt"
+    actual = tmp_path / "HCSC-BCBSIL-FSA-Eligibility-File_20261103.txt"
+    expected.write_text(content, encoding="utf-8")
+    actual.write_text(content, encoding="utf-8")
+
+    pairs = match_files_for_output(
+        _discovered([expected], [actual], OutputType.XO_FILTER),
+        HSAB_PROFILE,
+    )
+
+    assert len(pairs) == 1
+    assert pairs[0].normalized_identity == (
+        "HCSC-BCBSIL-FSA-Eligibility-File_<datetime>.txt"
+    )
+    assert pairs[0].is_valid_pattern
+    assert pairs[0].expected_file == expected
+    assert pairs[0].actual_file == actual
+
+
 def test_manual_does_not_match_patient_manual(tmp_path: Path) -> None:
     manual = tmp_path / "GDI_MANUAL_20260730110000.csv"
     patient = tmp_path / "GDI_MANUAL_PATIENT_20260730110000.csv"

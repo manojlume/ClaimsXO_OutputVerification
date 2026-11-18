@@ -215,6 +215,10 @@ def _parse_ignore_rules(ignore_rules_raw: dict[str, Any]) -> IgnoreRulesConfig:
         "ignore_rules.TransactionXO.HSAB.mdc_ignored_character_ranges",
         transaction_hsab.get("mdc_ignored_character_ranges"),
     )
+    xofilter_ranges = validate_character_ranges(
+        "ignore_rules.ClaimsXO.HSAB.xofilter_ignored_character_ranges",
+        claims_hsab.get("xofilter_ignored_character_ranges"),
+    )
 
     return IgnoreRulesConfig(
         claims_gdi_lh1_xml_paths=validate_xpath_list(
@@ -240,6 +244,7 @@ def _parse_ignore_rules(ignore_rules_raw: dict[str, Any]) -> IgnoreRulesConfig:
                 claims_hsab.get("wex_xml_paths"),
             ),
         ),
+        claims_hsab_xofilter_ignored_character_ranges=xofilter_ranges,
         enrollment_abg_alegeus_mbi_field_positions=abg_mbi,
         enrollment_abg_report_csv_columns=validate_string_list(
             "ignore_rules.EnrollmentXO.ABG.report_csv_columns",

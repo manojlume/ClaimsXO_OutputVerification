@@ -87,7 +87,7 @@ class FixedWidthComparator:
             )
             return ComparisonResult(
                 status=VerificationStatus.FAILED,
-                issue=f"Unable to read MDC file: {error}",
+                issue=f"Unable to read fixed-width file: {error}",
             )
         except UnicodeError as error:
             LOGGER.error(
@@ -98,7 +98,7 @@ class FixedWidthComparator:
             )
             return ComparisonResult(
                 status=VerificationStatus.FAILED,
-                issue=f"Unable to read MDC file: {error}",
+                issue=f"Unable to read fixed-width file: {error}",
             )
 
         differences: list[ComparisonDifference] = []
@@ -177,7 +177,7 @@ class FixedWidthComparator:
             )
             return ComparisonResult(
                 status=VerificationStatus.FAILED,
-                issue="MDC content mismatch",
+                issue="Fixed-width content mismatch",
                 differences=differences[:MAX_REPORTED_DIFFERENCES],
             )
 

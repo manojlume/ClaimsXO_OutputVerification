@@ -38,7 +38,7 @@ After QA has already produced Expected and Actual output trees, this tool:
 | Verification type | Output folders | File types |
 | --- | --- | --- |
 | **GDI** | `LH1`, `manual`, `ALG` | XML, CSV, MBI |
-| **HSAB** | `WEX` | XML (`HB1` / `HB2`) |
+| **HSAB** | `WEX`, `XOFilter` | XML (`HB1` / `HB2`); fixed-width Trigger `.txt` |
 
 ### EnrollmentXO
 
@@ -88,9 +88,10 @@ Old top-level `ignore_rules.GDI` / `ignore_rules.HSAB` still loads temporarily f
 - `manual`: `GDI_MANUAL_<datetime>.csv`, `GDI_MANUAL_PATIENT_<datetime>.csv`, `GDI_REPROCESS_MANUAL_<datetime>.csv`, `GDI_REPROCESS_MANUAL_PATIENT_<datetime>.csv`
 - `ALG`: `LumeLight.ClaimFeed.<datetime>.mbi`, `LumeLight.Reprocess.ClaimFeed.<datetime>.mbi`
 
-### Supported HSAB files
+### Supported ClaimsXO HSAB files
 
 - `WEX`: `HB1_HSAB_CLAIMS_<datetime>.xml`, `HB2_HSAB_CLAIMS_<datetime>.xml`
+- `XOFilter` (under `current`, folder name case-insensitive): `HCSC-BCBSIL-FSA-Eligibility-File_<datetime>.txt` where `<datetime>` is `yyyyMMdd` (8 digits) or `yyyyMMddHHmmss` (14 digits); fixed-width, no header, line order enforced, no ignore ranges
 
 Datetime is exactly 14 digits: `yyyyMMddHHmmss`.
 
@@ -128,7 +129,7 @@ Discovery rules:
 - Recursively scan for supported run folders
 - Only inspect supported output folders directly under a run folder
 - Only read files directly under those output folders
-- Ignore unsupported extensions (ClaimsXO: `.xml`/`.csv`/`.mbi`; EnrollmentXO: `.mbi`/`.txt`/`.csv`)
+- Ignore unsupported extensions (ClaimsXO GDI: `.xml`/`.csv`/`.mbi`; ClaimsXO HSAB: `.xml`/`.csv`/`.mbi`/`.txt`; EnrollmentXO: `.mbi`/`.txt`/`.csv`)
 
 ## YAML configuration
 
@@ -161,6 +162,7 @@ ignore_rules:
         - 7
     HSAB:
       wex_xml_paths: []
+      xofilter_ignored_character_ranges: []
   EnrollmentXO:
     ABG:
       alegeus_mbi_field_positions: []

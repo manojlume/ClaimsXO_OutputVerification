@@ -47,10 +47,21 @@ def _config(tmp_path: Path, expected: Path, actual: Path, verification_type: str
                 "patient_manual_csv_columns": [],
                 "mbi_field_positions": [],
             },
-            "HSAB": {"wex_xml_paths": []},
+            "HSAB": {
+                "wex_xml_paths": [],
+                "xofilter_ignored_character_ranges": [],
+            },
         },
     }
     return build_resolved_config(data)
+
+
+SAMPLE_XOFILTER_FIXED_WIDTH = (
+    "12201000322N12683    TORRE1S             JULIA1          "
+    "22050124123124123149                       \n"
+    "12201000926N12682    WHITE9              TESSA9          "
+    "26010126123127123149                       \n"
+)
 
 
 def test_passed_result(tmp_path: Path) -> None:
@@ -191,3 +202,68 @@ def test_empty_run_folder_on_both_sides_is_not_verified(tmp_path: Path) -> None:
     assert rows[0].scenario == "test_tickets\\test_ticket_81243"
     assert rows[0].run_type == "current"
     assert rows[0].output_type == ""
+
+
+def test_hsab_xofilter_trigger_fixed_width_passed(tmp_path: Path) -> None:
+    expected = tmp_path / "expected"
+    actual = tmp_path / "actual"
+    _touch(
+        expected
+        / "s1"
+        / "current"
+        / "XOFilter"
+        / "HCSC-BCBSIL-FSA-Eligibility-File_20260730110000.txt",
+        SAMPLE_XOFILTER_FIXED_WIDTH,
+    )
+    _touch(
+        actual
+        / "s1"
+        / "current"
+        / "xofilter"
+        / "HCSC-BCBSIL-FSA-Eligibility-File_20260730120000.txt",
+        SAMPLE_XOFILTER_FIXED_WIDTH,
+    )
+
+    rows, exit_code = VerificationService(
+        _config(tmp_path, expected, actual, verification_type="HSAB")
+    ).run()
+    assert exit_code == ExitCode.SUCCESS
+    xofilter_rows = [row for row in rows if row.output_type == "XOFilter"]
+    assert len(xofilter_rows) == 1
+    assert xofilter_rows[0].status == VerificationStatus.PASSED
+    assert xofilter_rows[0].run_type == "current"
+
+
+def test_hsab_xofilter_trigger_eight_digit_date_passed(tmp_path: Path) -> None:
+    expected = tmp_path / "expected"
+    actual = tmp_path / "actual"
+    _touch(
+        expected
+        / "s1"
+        / "current"
+        / "XOFilter"
+        / "HCSC-BCBSIL-FSA-Eligibility-File_20261018.txt",
+        SAMPLE_XOFILTER_FIXED_WIDTH,
+    )
+    _touch(
+        actual
+        / "s1"
+        / "current"
+        / "xofilter"
+        / "HCSC-BCBSIL-FSA-Eligibility-File_20261103.txt",
+        SAMPLE_XOFILTER_FIXED_WIDTH,
+    )
+
+    rows, exit_code = VerificationService(
+        _config(tmp_path, expected, actual, verification_type="HSAB")
+    ).run()
+    assert exit_code == ExitCode.SUCCESS
+    xofilter_rows = [row for row in rows if row.output_type == "XOFilter"]
+    assert len(xofilter_rows) == 1
+    assert xofilter_rows[0].status == VerificationStatus.PASSED
+    assert xofilter_rows[0].expected_file == (
+        "HCSC-BCBSIL-FSA-Eligibility-File_20261018.txt"
+    )
+    assert xofilter_rows[0].actual_file == (
+        "HCSC-BCBSIL-FSA-Eligibility-File_20261103.txt"
+    )

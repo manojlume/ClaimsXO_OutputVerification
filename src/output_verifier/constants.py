@@ -46,6 +46,7 @@ class OutputType(str, Enum):
     MANUAL = "manual"
     ALG = "ALG"
     WEX = "WEX"
+    XO_FILTER = "XOFilter"
     ALEGEUS = "alegeus"
     REPORTS = "reports"
     WEX_HEALTH = "WexHealth"
@@ -108,6 +109,7 @@ SUPPORTED_RUN_FOLDERS: frozenset[str] = frozenset(
 )
 
 CLAIMS_XO_EXTENSIONS: frozenset[str] = frozenset({".xml", ".csv", ".mbi"})
+CLAIMS_XO_HSAB_EXTENSIONS: frozenset[str] = frozenset({".xml", ".csv", ".mbi", ".txt"})
 ENROLLMENT_XO_EXTENSIONS: frozenset[str] = frozenset({".mbi", ".txt", ".csv"})
 TRANSACTION_XO_EXTENSIONS: frozenset[str] = frozenset({".txt", ".csv"})
 
@@ -116,6 +118,7 @@ OUTPUT_TYPE_CANONICAL: dict[str, OutputType] = {
     "manual": OutputType.MANUAL,
     "alg": OutputType.ALG,
     "wex": OutputType.WEX,
+    "xofilter": OutputType.XO_FILTER,
     "alegeus": OutputType.ALEGEUS,
     "reports": OutputType.REPORTS,
     "wexhealth": OutputType.WEX_HEALTH,
@@ -176,6 +179,11 @@ GDI_REPROCESS_MBI_PATTERN = re.compile(
 )
 HSAB_HB1_PATTERN = re.compile(r"^HB1_HSAB_CLAIMS_(\d{14})\.xml$", re.IGNORECASE)
 HSAB_HB2_PATTERN = re.compile(r"^HB2_HSAB_CLAIMS_(\d{14})\.xml$", re.IGNORECASE)
+# Date token is yyyyMMdd (8) or yyyyMMddHHmmss (14); longer alternative first.
+HSAB_XOFILTER_TRIGGER_PATTERN = re.compile(
+    r"^HCSC-BCBSIL-FSA-Eligibility-File_(\d{14}|\d{8})\.txt$",
+    re.IGNORECASE,
+)
 
 # EnrollmentXO filename patterns (runtime timestamp is a digit run, often 17 digits).
 ABG_EXPORT_MBI_PATTERN = re.compile(
@@ -385,7 +393,7 @@ CLAIMS_XO_GDI_PROFILE = SolutionProfile(
 CLAIMS_XO_HSAB_PROFILE = SolutionProfile(
     solution_type=SolutionType.CLAIMS_XO,
     verification_type=VerificationType.HSAB,
-    supported_extensions=CLAIMS_XO_EXTENSIONS,
+    supported_extensions=CLAIMS_XO_HSAB_EXTENSIONS,
     output_folders=(
         OutputFolderProfile(
             output_type=OutputType.WEX,
@@ -401,6 +409,20 @@ CLAIMS_XO_HSAB_PROFILE = SolutionProfile(
                     normalized_template=f"HB2_HSAB_CLAIMS_{DATETIME_TOKEN}.xml",
                     file_format=FileFormat.XML,
                     ignore_rule_key="wex_xml_paths",
+                ),
+            ),
+        ),
+        OutputFolderProfile(
+            output_type=OutputType.XO_FILTER,
+            filename_rules=(
+                FilenameRule(
+                    pattern=HSAB_XOFILTER_TRIGGER_PATTERN,
+                    normalized_template=(
+                        f"HCSC-BCBSIL-FSA-Eligibility-File_{DATETIME_TOKEN}.txt"
+                    ),
+                    file_format=FileFormat.FIXED_WIDTH,
+                    ignore_rule_key="xofilter_ignored_character_ranges",
+                    has_header=False,
                 ),
             ),
         ),

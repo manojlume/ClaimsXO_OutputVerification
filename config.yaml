@@ -50,6 +50,7 @@ ignore_rules:
       wex_xml_paths: 
         - "/LH1StandardClaimsExchange/@CreatedDateTime"
         - "/LH1StandardClaimsExchange/@FileDateTime"
+      xofilter_ignored_character_ranges: []
   EnrollmentXO:
     ABG:
       alegeus_mbi_field_positions: []

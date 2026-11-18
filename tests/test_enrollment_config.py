@@ -54,7 +54,10 @@ def _base(expected: Path, actual: Path) -> dict:
                     "patient_manual_csv_columns": [],
                     "mbi_field_positions": [19],
                 },
-                "HSAB": {"wex_xml_paths": ["/Root/@A"]},
+                "HSAB": {
+                    "wex_xml_paths": ["/Root/@A"],
+                    "xofilter_ignored_character_ranges": [],
+                },
             },
             "EnrollmentXO": {
                 "ABG": {
@@ -88,6 +91,7 @@ def test_nested_claims_hsab_ignore_rules(tmp_path: Path) -> None:
     data["tpa_id"] = "HSAB"
     resolved = build_resolved_config(data)
     assert resolved.ignore_rules.claims_hsab_wex_xml_paths == ("/Root/@A",)
+    assert resolved.ignore_rules.claims_hsab_xofilter_ignored_character_ranges == ()
 
 
 def test_nested_enrollment_ignore_rules(tmp_path: Path) -> None:
@@ -114,11 +118,12 @@ def test_legacy_ignore_rules_still_load(tmp_path: Path, caplog: pytest.LogCaptur
             "patient_manual_csv_columns": [],
             "mbi_field_positions": [],
         },
-        "HSAB": {"wex_xml_paths": []},
+        "HSAB": {"wex_xml_paths": [], "xofilter_ignored_character_ranges": []},
     }
     with caplog.at_level("WARNING"):
         resolved = build_resolved_config(data)
     assert resolved.ignore_rules.claims_gdi_lh1_xml_paths == ("/Legacy/@A",)
+    assert resolved.ignore_rules.claims_hsab_xofilter_ignored_character_ranges == ()
     assert any("deprecated" in message.lower() for message in caplog.messages)
 
 

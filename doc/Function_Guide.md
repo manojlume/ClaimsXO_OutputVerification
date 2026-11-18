@@ -113,7 +113,7 @@ Application constants, enums, filename patterns, and TPA profile registry.
 | --- | --- |
 | `SolutionType` | `CLAIMS_XO` (`ClaimsXO`), `ENROLLMENT_XO` (`EnrollmentXO`) |
 | `VerificationType` | `ABG`, `GDI`, `HSAB` |
-| `OutputType` | `LH1`, `MANUAL`, `ALG`, `WEX`, `ALEGEUS`, `REPORTS`, `WEX_HEALTH`, `HSAB_ENROLLMENT_IMPORT` |
+| `OutputType` | `LH1`, `MANUAL`, `ALG`, `WEX`, `XO_FILTER`, `ALEGEUS`, `REPORTS`, `WEX_HEALTH`, `HSAB_ENROLLMENT_IMPORT` |
 | `RunType` | `CURRENT`, `PRE`, `PREPRE`, `HOLD` |
 | `VerificationStatus` | `PASSED`, `FAILED`, `NOT_VERIFIED` |
 | `FileFormat` | `XML`, `CSV`, `MBI`, `DELIMITED_TEXT` |
@@ -176,6 +176,7 @@ Application constants, enums, filename patterns, and TPA profile registry.
 | `GDI_MBI_PATTERN` | `LumeLight.ClaimFeed.<dt>.mbi` |
 | `GDI_REPROCESS_MBI_PATTERN` | `LumeLight.Reprocess.ClaimFeed.<dt>.mbi` |
 | `HSAB_HB1_PATTERN` / `HSAB_HB2_PATTERN` | WEX XML claims files |
+| `HSAB_XOFILTER_TRIGGER_PATTERN` | `HCSC-BCBSIL-FSA-Eligibility-File_<dt>.txt` (`yyyyMMdd` or `yyyyMMddHHmmss`) |
 | `ABG_EXPORT_MBI_PATTERN` / `ABG_*_REPORT_PATTERN` | Enrollment ABG files |
 | `ENROLLMENT_GDI_*` / `ENROLLMENT_HSAB_*` | Enrollment GDI/HSAB files |
 

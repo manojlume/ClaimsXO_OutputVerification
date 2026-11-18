@@ -50,7 +50,7 @@ def _base_config(expected: Path, actual: Path) -> dict:
                 "patient_manual_csv_columns": [],
                 "mbi_field_positions": [],
             },
-            "HSAB": {"wex_xml_paths": []},
+            "HSAB": {"wex_xml_paths": [], "xofilter_ignored_character_ranges": []},
         },
     }
 

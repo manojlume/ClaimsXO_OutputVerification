@@ -178,6 +178,7 @@ Profiles live in `constants.py` as `SOLUTION_PROFILES` (`get_solution_profile(so
 | --- | --- | --- | --- |
 | `WEX` | `HB1_HSAB_CLAIMS_<datetime>.xml` | XML | `ignore_rules.ClaimsXO.HSAB.wex_xml_paths` |
 | `WEX` | `HB2_HSAB_CLAIMS_<datetime>.xml` | XML | same |
+| `XOFilter` | `HCSC-BCBSIL-FSA-Eligibility-File_<datetime>.txt` (`yyyyMMdd` or `yyyyMMddHHmmss`; fixed-width, no header; typically under `current`) | FixedWidth | `xofilter_ignored_character_ranges` |
 
 #### EnrollmentXO — ABG
 
@@ -406,6 +407,7 @@ ignore_rules:
       mbi_field_positions: [...]
     HSAB:
       wex_xml_paths: [...]
+      xofilter_ignored_character_ranges: []
   EnrollmentXO:
     ABG:
       alegeus_mbi_field_positions: []

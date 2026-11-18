@@ -49,6 +49,7 @@ class IgnoreRulesConfig:
     claims_gdi_patient_manual_csv_columns: tuple[str, ...] = ()
     claims_gdi_mbi_field_positions: tuple[int, ...] = ()
     claims_hsab_wex_xml_paths: tuple[str, ...] = ()
+    claims_hsab_xofilter_ignored_character_ranges: tuple[tuple[int, int], ...] = ()
     enrollment_abg_alegeus_mbi_field_positions: tuple[int, ...] = ()
     enrollment_abg_report_csv_columns: tuple[str, ...] = ()
     enrollment_gdi_wexhealth_field_positions: tuple[int, ...] = ()
@@ -153,6 +154,12 @@ class IgnoreRulesConfig:
         ignore_rule_key: str,
     ) -> tuple[tuple[int, int], ...]:
         """Return configured one-based inclusive character ranges to ignore."""
+        if (
+            solution_type == SolutionType.CLAIMS_XO
+            and verification_type == VerificationType.HSAB
+            and ignore_rule_key == "xofilter_ignored_character_ranges"
+        ):
+            return self.claims_hsab_xofilter_ignored_character_ranges
         if (
             solution_type == SolutionType.TRANSACTION_XO
             and verification_type == VerificationType.HSAB

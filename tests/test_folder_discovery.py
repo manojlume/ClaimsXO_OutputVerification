@@ -216,3 +216,25 @@ def test_hsab_wex_discovery(tmp_path: Path) -> None:
     discovered = discover_output_locations(root, SolutionType.CLAIMS_XO, VerificationType.HSAB)
     key = next(iter(discovered))
     assert key.output_type == OutputType.WEX
+
+
+def test_hsab_xofilter_discovery_case_insensitive(tmp_path: Path) -> None:
+    root = tmp_path / "Scenarios"
+    sample = (
+        "12201000322N12683    TORRE1S             JULIA1          "
+        "22050124123124123149                       \n"
+    )
+    _touch(
+        root
+        / "s1"
+        / "current"
+        / "xofilter"
+        / "HCSC-BCBSIL-FSA-Eligibility-File_20260730110000.txt",
+        sample,
+    )
+
+    discovered = discover_output_locations(root, SolutionType.CLAIMS_XO, VerificationType.HSAB)
+    key = next(iter(discovered))
+    assert key.run_type == "current"
+    assert key.output_type == OutputType.XO_FILTER
+    assert discovered[key].name.lower() == "xofilter"
