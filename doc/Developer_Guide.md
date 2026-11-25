@@ -217,7 +217,7 @@ Logical layout under Expected and Actual parent folders:
 
 Supported run folders (case-insensitive; reported lower-case):
 
-- `current`
+- `current` (default when `run_folders` is missing or empty)
 - `pre`
 - `prepre`
 - `hold`
@@ -287,6 +287,8 @@ If extension is supported but pattern is invalid → Failed with
 | Actual-only scenario/run/output | Failed | Unexpected scenario exists only in Actual Outputs |
 | Expected-only scenario/run/output | Failed | Expected scenario missing in Actual Outputs |
 | Both sides have no supported files | NotVerified | No files available for verification |
+| Expected has empty `ignore.txt` and Actual has no output files | Passed | Output ignored via empty ignore.txt (no Actual files) |
+| Expected has empty `ignore.txt` and Actual has output file(s) | Failed | Expected empty ignore.txt but Actual folder contains file(s): … |
 | Expected file missing | Failed | Expected file missing |
 | Unexpected actual file | Failed | Unexpected actual file |
 | File count mismatch | Failed | File count mismatch. Expected: X, Actual: Y |

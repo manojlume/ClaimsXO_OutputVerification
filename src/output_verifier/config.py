@@ -9,6 +9,7 @@ from typing import Any
 from lxml import etree
 
 from output_verifier.constants import (
+    DEFAULT_RUN_FOLDERS,
     HEX_COLOR_PATTERN,
     SUPPORTED_RUN_FOLDERS,
     SolutionType,
@@ -114,11 +115,11 @@ def parse_run_folders(value: Any) -> tuple[str, ...]:
     """
     Parse run folders to compare.
 
-    Empty or omitted means every supported run folder.
+    Empty, omitted, or missing key defaults to current only.
     Accepts a comma-separated string or a YAML list. Matching is case-insensitive.
     """
     if value is None:
-        return ()
+        return DEFAULT_RUN_FOLDERS
     if isinstance(value, str):
         raw_items = [item.strip() for item in value.split(",")]
     elif isinstance(value, list):
@@ -148,7 +149,7 @@ def parse_run_folders(value: Any) -> tuple[str, ...]:
         if normalized not in seen:
             seen.add(normalized)
             selected.append(normalized)
-    return tuple(selected)
+    return tuple(selected) if selected else DEFAULT_RUN_FOLDERS
 
 
 def validate_string_list(field_name: str, value: Any) -> tuple[str, ...]:

@@ -13,11 +13,12 @@ from output_verifier.comparators.xml_comparator import XmlComparator
 from output_verifier.constants import (
     ExitCode,
     FileFormat,
+    IGNORE_MARKER_FILENAME,
     VerificationStatus,
     get_solution_profile,
 )
 from output_verifier.file_matcher import match_files_for_output
-from output_verifier.folder_discovery import build_scenario_inventory
+from output_verifier.folder_discovery import build_scenario_inventory, has_empty_ignore_marker
 from output_verifier.models import (
     ComparisonOptions,
     ComparisonResult,
@@ -101,6 +102,59 @@ class VerificationService:
                     discovered,
                     status=VerificationStatus.FAILED,
                     issue="Expected scenario missing in Actual Outputs",
+                )
+            ]
+
+        if has_empty_ignore_marker(discovered.expected_folder):
+            if discovered.actual_files:
+                actual_names = ", ".join(path.name for path in discovered.actual_files)
+                LOGGER.info(
+                    "Failing scenario: empty %s in Expected but Actual has files. "
+                    "scenario=%s run=%s output=%s files=%s",
+                    IGNORE_MARKER_FILENAME,
+                    scenario_key.scenario_path,
+                    scenario_key.run_type,
+                    scenario_key.output_type.value,
+                    actual_names,
+                )
+                return [
+                    ReportRow(
+                        solution_type=self._config.solution_type.value,
+                        verification_type=self._config.tpa_id.value,
+                        scenario=scenario_key.display_scenario(),
+                        run_type=scenario_key.run_type,
+                        output_type=scenario_key.output_type.value,
+                        expected_file=IGNORE_MARKER_FILENAME,
+                        actual_file=actual_names,
+                        status=VerificationStatus.FAILED,
+                        issue=(
+                            f"Expected empty {IGNORE_MARKER_FILENAME} but Actual folder "
+                            f"contains file(s): {actual_names}"
+                        ),
+                    )
+                ]
+            LOGGER.info(
+                "Passing scenario via empty %s in Expected and no Actual files. "
+                "scenario=%s run=%s output=%s",
+                IGNORE_MARKER_FILENAME,
+                scenario_key.scenario_path,
+                scenario_key.run_type,
+                scenario_key.output_type.value,
+            )
+            return [
+                ReportRow(
+                    solution_type=self._config.solution_type.value,
+                    verification_type=self._config.tpa_id.value,
+                    scenario=scenario_key.display_scenario(),
+                    run_type=scenario_key.run_type,
+                    output_type=scenario_key.output_type.value,
+                    expected_file=IGNORE_MARKER_FILENAME,
+                    actual_file="",
+                    status=VerificationStatus.PASSED,
+                    issue=(
+                        f"Output ignored via empty {IGNORE_MARKER_FILENAME} "
+                        "(no Actual files)"
+                    ),
                 )
             ]
 

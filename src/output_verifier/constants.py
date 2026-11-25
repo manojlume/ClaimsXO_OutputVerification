@@ -14,6 +14,7 @@ DATETIME_TOKEN = "<datetime>"
 RUNTIME_TIMESTAMP_TOKEN = "<runtime_timestamp>"
 DATETIME_DIGIT_COUNT = 14
 DATETIME_PLACEHOLDER_PATTERN = re.compile(r"\d{14}")
+IGNORE_MARKER_FILENAME = "ignore.txt"
 
 MAX_REPORTED_DIFFERENCES = 2
 MAX_LOGGED_VALUE_LENGTH = 200
@@ -107,6 +108,7 @@ class DifferenceType(str, Enum):
 SUPPORTED_RUN_FOLDERS: frozenset[str] = frozenset(
     value.value.lower() for value in RunType
 )
+DEFAULT_RUN_FOLDERS: tuple[str, ...] = (RunType.CURRENT.value,)
 
 CLAIMS_XO_EXTENSIONS: frozenset[str] = frozenset({".xml", ".csv", ".mbi"})
 CLAIMS_XO_HSAB_EXTENSIONS: frozenset[str] = frozenset({".xml", ".csv", ".mbi", ".txt"})

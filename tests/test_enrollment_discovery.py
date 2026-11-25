@@ -38,7 +38,12 @@ def test_gdi_discovers_wexhealth_and_reports(tmp_path: Path) -> None:
     _touch(
         root / "s1" / "pre" / "reports" / "GDI_ChangeReport_GDI_EN_ALL_12122022_after_20240710125331939.csv"
     )
-    discovered = discover_output_locations(root, SolutionType.ENROLLMENT_XO, VerificationType.GDI)
+    discovered = discover_output_locations(
+        root,
+        SolutionType.ENROLLMENT_XO,
+        VerificationType.GDI,
+        ("pre",),
+    )
     outputs = {key.output_type for key in discovered}
     assert outputs == {OutputType.WEX_HEALTH, OutputType.REPORTS}
 

@@ -14,7 +14,13 @@ def _touch(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
-def _config(tmp_path: Path, expected: Path, actual: Path, verification_type: str = "GDI"):
+def _config(
+    tmp_path: Path,
+    expected: Path,
+    actual: Path,
+    verification_type: str = "GDI",
+    run_folders: str | None = None,
+):
     data = {
         "solution_type": "ClaimsXO",
         "tpa_id": verification_type,
@@ -53,6 +59,8 @@ def _config(tmp_path: Path, expected: Path, actual: Path, verification_type: str
             },
         },
     }
+    if run_folders is not None:
+        data["run_folders"] = run_folders
     return build_resolved_config(data)
 
 
@@ -100,7 +108,9 @@ def test_lh1_with_only_hold_is_not_marked_not_verified(tmp_path: Path) -> None:
         xml,
     )
 
-    rows, exit_code = VerificationService(_config(tmp_path, expected, actual)).run()
+    rows, exit_code = VerificationService(
+        _config(tmp_path, expected, actual, run_folders="current, hold")
+    ).run()
     assert exit_code == ExitCode.SUCCESS
     assert len(rows) == 1
     assert rows[0].run_type == "hold"
@@ -114,6 +124,62 @@ def test_not_verified_empty(tmp_path: Path) -> None:
     expected = tmp_path / "expected"
     actual = tmp_path / "actual"
     (expected / "s1" / "current" / "LH1").mkdir(parents=True)
+    (actual / "s1" / "current" / "LH1").mkdir(parents=True)
+
+    rows, exit_code = VerificationService(_config(tmp_path, expected, actual)).run()
+    assert exit_code == ExitCode.SUCCESS
+    assert rows[0].status == VerificationStatus.NOT_VERIFIED
+
+
+def test_empty_ignore_txt_in_expected_and_empty_actual_passes(tmp_path: Path) -> None:
+    expected = tmp_path / "expected"
+    actual = tmp_path / "actual"
+    _touch(expected / "s1" / "current" / "LH1" / "ignore.txt", "")
+    (actual / "s1" / "current" / "LH1").mkdir(parents=True)
+
+    rows, exit_code = VerificationService(_config(tmp_path, expected, actual)).run()
+    assert exit_code == ExitCode.SUCCESS
+    assert len(rows) == 1
+    assert rows[0].status == VerificationStatus.PASSED
+    assert rows[0].output_type == "LH1"
+    assert rows[0].expected_file == "ignore.txt"
+    assert rows[0].actual_file == ""
+    assert "ignore.txt" in rows[0].issue
+
+
+def test_empty_ignore_txt_in_expected_with_actual_ignore_only_passes(tmp_path: Path) -> None:
+    expected = tmp_path / "expected"
+    actual = tmp_path / "actual"
+    _touch(expected / "s1" / "current" / "LH1" / "ignore.txt", "")
+    _touch(actual / "s1" / "current" / "LH1" / "IGNORE.TXT", "")
+
+    rows, exit_code = VerificationService(_config(tmp_path, expected, actual)).run()
+    assert exit_code == ExitCode.SUCCESS
+    assert rows[0].status == VerificationStatus.PASSED
+
+
+def test_empty_ignore_txt_in_expected_fails_when_actual_has_files(tmp_path: Path) -> None:
+    expected = tmp_path / "expected"
+    actual = tmp_path / "actual"
+    _touch(expected / "s1" / "current" / "LH1" / "ignore.txt", "")
+    _touch(
+        actual / "s1" / "current" / "LH1" / "GDI_LH1_20260730120000.xml",
+        "<Root/>",
+    )
+
+    rows, exit_code = VerificationService(_config(tmp_path, expected, actual)).run()
+    assert exit_code == ExitCode.COMPARISON_FAILURE
+    assert len(rows) == 1
+    assert rows[0].status == VerificationStatus.FAILED
+    assert rows[0].expected_file == "ignore.txt"
+    assert "GDI_LH1_20260730120000.xml" in rows[0].actual_file
+    assert "Actual folder contains file" in rows[0].issue
+
+
+def test_non_empty_ignore_txt_does_not_auto_pass(tmp_path: Path) -> None:
+    expected = tmp_path / "expected"
+    actual = tmp_path / "actual"
+    _touch(expected / "s1" / "current" / "LH1" / "ignore.txt", "skip")
     (actual / "s1" / "current" / "LH1").mkdir(parents=True)
 
     rows, exit_code = VerificationService(_config(tmp_path, expected, actual)).run()

@@ -164,7 +164,7 @@ def test_run_folders_comma_separated(tmp_path: Path) -> None:
     assert resolved.run_folders == ("current", "pre")
 
 
-def test_empty_run_folders_means_all(tmp_path: Path) -> None:
+def test_empty_run_folders_defaults_to_current(tmp_path: Path) -> None:
     expected = tmp_path / "expected"
     actual = tmp_path / "actual"
     expected.mkdir()
@@ -172,7 +172,18 @@ def test_empty_run_folders_means_all(tmp_path: Path) -> None:
     data = _base_config(expected, actual)
     data["run_folders"] = ""
     resolved = build_resolved_config(data)
-    assert resolved.run_folders == ()
+    assert resolved.run_folders == ("current",)
+
+
+def test_missing_run_folders_defaults_to_current(tmp_path: Path) -> None:
+    expected = tmp_path / "expected"
+    actual = tmp_path / "actual"
+    expected.mkdir()
+    actual.mkdir()
+    data = _base_config(expected, actual)
+    assert "run_folders" not in data
+    resolved = build_resolved_config(data)
+    assert resolved.run_folders == ("current",)
 
 
 def test_unsupported_run_folder(tmp_path: Path) -> None:

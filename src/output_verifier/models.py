@@ -181,7 +181,7 @@ class ResolvedConfig:
     logging: LoggingConfig
     ignore_rules: IgnoreRulesConfig
     config_path: Path | None = None
-    run_folders: tuple[str, ...] = ()
+    run_folders: tuple[str, ...] = ("current",)
 
 
 @dataclass(frozen=True)

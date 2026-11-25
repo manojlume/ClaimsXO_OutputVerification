@@ -30,7 +30,12 @@ def test_multi_level_scenario(tmp_path: Path) -> None:
     root = tmp_path / "Scenarios"
     _touch(root / "test_aggregation" / "3" / "pre" / "LH1" / "GDI_LH1_20260730110000.xml")
 
-    discovered = discover_output_locations(root, SolutionType.CLAIMS_XO, VerificationType.GDI)
+    discovered = discover_output_locations(
+        root,
+        SolutionType.CLAIMS_XO,
+        VerificationType.GDI,
+        ("pre",),
+    )
     key = next(iter(discovered))
     assert key.scenario_path == "test_aggregation\\3"
     assert key.run_type == "pre"
@@ -49,11 +54,26 @@ def test_all_supported_run_types(tmp_path: Path) -> None:
         "<a/>",
     )
 
-    discovered = discover_output_locations(root, SolutionType.CLAIMS_XO, VerificationType.GDI)
+    discovered = discover_output_locations(
+        root,
+        SolutionType.CLAIMS_XO,
+        VerificationType.GDI,
+        ("current", "pre", "prepre", "hold"),
+    )
     assert {key.run_type for key in discovered} == {"current", "pre", "prepre", "hold"}
     hold_key = next(key for key in discovered if key.run_type == "hold")
     assert hold_key.output_type == OutputType.LH1
     assert discovered[hold_key].name.lower() == "hold"
+
+
+def test_default_run_folders_is_current_only(tmp_path: Path) -> None:
+    root = tmp_path / "Scenarios"
+    _touch(root / "s1" / "current" / "LH1" / "GDI_LH1_20260730110000.xml")
+    _touch(root / "s1" / "pre" / "LH1" / "GDI_LH1_20260730110001.xml")
+    _touch(root / "s1" / "prepre" / "LH1" / "GDI_LH1_20260730110002.xml")
+
+    discovered = discover_output_locations(root, SolutionType.CLAIMS_XO, VerificationType.GDI)
+    assert {key.run_type for key in discovered} == {"current"}
 
 
 def test_run_folders_limit_discovery(tmp_path: Path) -> None:
@@ -129,7 +149,11 @@ def test_empty_current_lh1_is_omitted_when_hold_exists(tmp_path: Path) -> None:
     )
 
     inventory = build_scenario_inventory(
-        expected, actual, SolutionType.CLAIMS_XO, VerificationType.GDI
+        expected,
+        actual,
+        SolutionType.CLAIMS_XO,
+        VerificationType.GDI,
+        ("current", "hold"),
     )
     assert len(inventory) == 1
     item = inventory[0]
@@ -149,7 +173,11 @@ def test_current_lh1_files_are_kept_when_hold_also_exists(tmp_path: Path) -> Non
     _touch(actual / "s1" / "current" / "LH1" / "Hold" / "GDI_LH1_20260730120001.xml")
 
     inventory = build_scenario_inventory(
-        expected, actual, SolutionType.CLAIMS_XO, VerificationType.GDI
+        expected,
+        actual,
+        SolutionType.CLAIMS_XO,
+        VerificationType.GDI,
+        ("current", "hold"),
     )
     assert {(item.scenario_key.run_type, len(item.expected_files)) for item in inventory} == {
         ("current", 1),

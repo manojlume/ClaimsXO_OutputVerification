@@ -6,6 +6,8 @@ import logging
 from pathlib import Path
 
 from output_verifier.constants import (
+    DEFAULT_RUN_FOLDERS,
+    IGNORE_MARKER_FILENAME,
     OUTPUT_TYPE_CANONICAL,
     SUPPORTED_RUN_FOLDERS,
     OutputType,
@@ -22,6 +24,27 @@ LOGGER = logging.getLogger(__name__)
 
 # Hold is not a sibling of current/pre/prepre. It is only current\LH1\Hold.
 PEER_RUN_FOLDERS: frozenset[str] = SUPPORTED_RUN_FOLDERS - {RunType.HOLD.value}
+
+
+def has_empty_ignore_marker(folder: Path | None) -> bool:
+    """Return True when folder directly contains an empty ignore.txt marker."""
+    if folder is None or not folder.is_dir():
+        return False
+    try:
+        for entry in folder.iterdir():
+            if not entry.is_file():
+                continue
+            if entry.name.lower() != IGNORE_MARKER_FILENAME:
+                continue
+            try:
+                content = entry.read_text(encoding="utf-8-sig")
+            except (OSError, UnicodeError) as error:
+                LOGGER.error("Unable to read ignore marker %s: %s", entry, error)
+                return False
+            return content == ""
+    except OSError as error:
+        LOGGER.error("Unable to read folder for ignore marker %s: %s", folder, error)
+    return False
 
 
 def _canonicalize_run_type(folder_name: str, allowed_run_folders: frozenset[str]) -> str | None:
@@ -56,7 +79,11 @@ def _collect_direct_files(
     files: list[Path] = []
     try:
         for entry in sorted(folder.iterdir(), key=lambda item: item.name.lower()):
-            if entry.is_file() and has_supported_extension(entry.name, supported_extensions):
+            if not entry.is_file():
+                continue
+            if entry.name.lower() == IGNORE_MARKER_FILENAME:
+                continue
+            if has_supported_extension(entry.name, supported_extensions):
                 files.append(entry)
     except OSError as error:
         LOGGER.error("Unable to read output folder %s: %s", folder, error)
@@ -77,7 +104,7 @@ def discover_output_locations(
     directly under the run folder are considered.
     """
     profile = get_solution_profile(solution_type, verification_type)
-    allowed_run_folders = frozenset(run_folders) if run_folders else SUPPORTED_RUN_FOLDERS
+    allowed_run_folders = frozenset(run_folders) if run_folders else frozenset(DEFAULT_RUN_FOLDERS)
     include_hold = RunType.HOLD.value in allowed_run_folders
     peer_allowed = allowed_run_folders & PEER_RUN_FOLDERS
     if include_hold:
@@ -183,7 +210,7 @@ def discover_run_locations(
     run_folders: tuple[str, ...] = (),
 ) -> dict[tuple[str, str], Path]:
     """Return supported run folders keyed by scenario path and run type."""
-    allowed_run_folders = frozenset(run_folders) if run_folders else SUPPORTED_RUN_FOLDERS
+    allowed_run_folders = frozenset(run_folders) if run_folders else frozenset(DEFAULT_RUN_FOLDERS)
     peer_allowed = allowed_run_folders & PEER_RUN_FOLDERS
     discovered: dict[tuple[str, str], Path] = {}
     if not root.exists():
@@ -237,9 +264,10 @@ def build_scenario_inventory(
 ) -> list[DiscoveredOutput]:
     """Build a union inventory of Expected and Actual scenario output folders."""
     profile = get_solution_profile(solution_type, verification_type)
+    effective_run_folders = run_folders if run_folders else DEFAULT_RUN_FOLDERS
     LOGGER.info(
         "Run folders to compare: %s",
-        ", ".join(run_folders) if run_folders else "all supported",
+        ", ".join(effective_run_folders),
     )
     expected_map = discover_output_locations(
         expected_root, solution_type, verification_type, run_folders
