@@ -113,11 +113,11 @@ def test_lh1_with_only_hold_is_not_marked_not_verified(tmp_path: Path) -> None:
     ).run()
     assert exit_code == ExitCode.SUCCESS
     assert len(rows) == 1
-    assert rows[0].run_type == "hold"
-    assert rows[0].output_type == "LH1"
+    assert rows[0].run_type == "current"
+    assert rows[0].output_type == "LH1\\Hold"
     assert rows[0].status == VerificationStatus.PASSED
-    assert rows[0].expected_file == "GDI_REGEN_LH1_20260511031103.xml"
-    assert rows[0].actual_file == "GDI_REGEN_LH1_20261021235718.xml"
+    assert rows[0].expected_file == "LH1\\Hold\\GDI_REGEN_LH1_20260511031103.xml"
+    assert rows[0].actual_file == "LH1\\Hold\\GDI_REGEN_LH1_20261021235718.xml"
 
 
 def test_not_verified_empty(tmp_path: Path) -> None:
@@ -142,9 +142,9 @@ def test_empty_ignore_txt_in_expected_and_empty_actual_passes(tmp_path: Path) ->
     assert len(rows) == 1
     assert rows[0].status == VerificationStatus.PASSED
     assert rows[0].output_type == "LH1"
-    assert rows[0].expected_file == "ignore.txt"
+    assert rows[0].expected_file == "LH1\\ignore.txt"
     assert rows[0].actual_file == ""
-    assert "ignore.txt" in rows[0].issue
+    assert "LH1\\ignore.txt" in rows[0].issue
 
 
 def test_empty_ignore_txt_in_expected_with_actual_ignore_only_passes(tmp_path: Path) -> None:
@@ -171,8 +171,8 @@ def test_empty_ignore_txt_in_expected_fails_when_actual_has_files(tmp_path: Path
     assert exit_code == ExitCode.COMPARISON_FAILURE
     assert len(rows) == 1
     assert rows[0].status == VerificationStatus.FAILED
-    assert rows[0].expected_file == "ignore.txt"
-    assert "GDI_LH1_20260730120000.xml" in rows[0].actual_file
+    assert rows[0].expected_file == "LH1\\ignore.txt"
+    assert "LH1\\GDI_LH1_20260730120000.xml" in rows[0].actual_file
     assert "Actual folder contains file" in rows[0].issue
 
 
@@ -198,7 +198,9 @@ def test_expected_file_missing(tmp_path: Path) -> None:
 
     rows, exit_code = VerificationService(_config(tmp_path, expected, actual)).run()
     assert exit_code == ExitCode.COMPARISON_FAILURE
-    assert any(row.issue == "Unexpected actual file" for row in rows)
+    assert len(rows) == 1
+    assert rows[0].status == VerificationStatus.FAILED
+    assert "Unexpected actual file" in rows[0].issue
 
 
 def test_unexpected_file(tmp_path: Path) -> None:
@@ -210,8 +212,101 @@ def test_unexpected_file(tmp_path: Path) -> None:
 
     rows, exit_code = VerificationService(_config(tmp_path, expected, actual)).run()
     assert exit_code == ExitCode.COMPARISON_FAILURE
-    assert any("File count mismatch" in row.issue for row in rows)
-    assert any(row.issue == "Unexpected actual file" for row in rows)
+    assert len(rows) == 1
+    assert rows[0].status == VerificationStatus.FAILED
+    assert "File count mismatch" in rows[0].issue
+    assert "Unexpected actual file" in rows[0].issue
+
+
+def test_multiple_files_in_same_folder_produce_one_report_row(tmp_path: Path) -> None:
+    expected = tmp_path / "expected"
+    actual = tmp_path / "actual"
+    xml = "<Root><Item>A</Item></Root>"
+    _touch(expected / "s1" / "current" / "WEX" / "HB1_HSAB_CLAIMS_20260617010230.xml", xml)
+    _touch(expected / "s1" / "current" / "WEX" / "HB2_HSAB_CLAIMS_20260617010230.xml", xml)
+    _touch(actual / "s1" / "current" / "WEX" / "HB1_HSAB_CLAIMS_20261103120000.xml", xml)
+    _touch(actual / "s1" / "current" / "WEX" / "HB2_HSAB_CLAIMS_20261103120000.xml", xml)
+
+    rows, exit_code = VerificationService(
+        _config(tmp_path, expected, actual, verification_type="HSAB")
+    ).run()
+    assert exit_code == ExitCode.SUCCESS
+    assert len(rows) == 1
+    assert rows[0].status == VerificationStatus.PASSED
+    assert rows[0].run_type == "current"
+    assert rows[0].output_type == "WEX"
+    assert rows[0].expected_file == (
+        "WEX\\HB1_HSAB_CLAIMS_20260617010230.xml\nWEX\\HB2_HSAB_CLAIMS_20260617010230.xml"
+    )
+    assert rows[0].actual_file == (
+        "WEX\\HB1_HSAB_CLAIMS_20261103120000.xml\nWEX\\HB2_HSAB_CLAIMS_20261103120000.xml"
+    )
+    assert rows[0].issue == ""
+
+
+def test_multiple_output_subfolders_produce_one_current_row(tmp_path: Path) -> None:
+    expected = tmp_path / "expected"
+    actual = tmp_path / "actual"
+    xml = "<Root><Item>A</Item></Root>"
+    csv_header = "FileDate,Name\n"
+    _touch(expected / "s1" / "current" / "LH1" / "GDI_LH1_20261019025117.xml", xml)
+    _touch(actual / "s1" / "current" / "LH1" / "GDI_LH1_20261125175245.xml", xml)
+    _touch(
+        expected / "s1" / "current" / "manual" / "GDI_MANUAL_20261019025119.csv",
+        csv_header + "2026-01-01,A\n",
+    )
+    _touch(
+        actual / "s1" / "current" / "manual" / "GDI_MANUAL_20261125175247.csv",
+        csv_header + "2026-01-01,A\n",
+    )
+    _touch(
+        expected / "s1" / "current" / "manual" / "GDI_MANUAL_PATIENT_20261019025121.csv",
+        csv_header + "2026-01-01,B\n",
+    )
+    _touch(
+        actual / "s1" / "current" / "manual" / "GDI_MANUAL_PATIENT_20261125175249.csv",
+        csv_header + "2026-01-01,B\n",
+    )
+
+    rows, exit_code = VerificationService(_config(tmp_path, expected, actual)).run()
+    assert exit_code == ExitCode.SUCCESS
+    assert len(rows) == 1
+    assert rows[0].run_type == "current"
+    assert rows[0].status == VerificationStatus.PASSED
+    assert rows[0].output_type == "LH1\nmanual"
+    assert "LH1\\GDI_LH1_20261019025117.xml" in rows[0].expected_file
+    assert "manual\\GDI_MANUAL_20261019025119.csv" in rows[0].expected_file
+    assert "manual\\GDI_MANUAL_PATIENT_20261019025121.csv" in rows[0].expected_file
+
+
+def test_multiple_files_folder_fails_when_any_file_fails(tmp_path: Path) -> None:
+    expected = tmp_path / "expected"
+    actual = tmp_path / "actual"
+    _touch(
+        expected / "s1" / "current" / "WEX" / "HB1_HSAB_CLAIMS_20260617010230.xml",
+        "<Root>A</Root>",
+    )
+    _touch(
+        expected / "s1" / "current" / "WEX" / "HB2_HSAB_CLAIMS_20260617010230.xml",
+        "<Root>A</Root>",
+    )
+    _touch(
+        actual / "s1" / "current" / "WEX" / "HB1_HSAB_CLAIMS_20261103120000.xml",
+        "<Root>A</Root>",
+    )
+    _touch(
+        actual / "s1" / "current" / "WEX" / "HB2_HSAB_CLAIMS_20261103120000.xml",
+        "<Root>B</Root>",
+    )
+
+    rows, exit_code = VerificationService(
+        _config(tmp_path, expected, actual, verification_type="HSAB")
+    ).run()
+    assert exit_code == ExitCode.COMPARISON_FAILURE
+    assert len(rows) == 1
+    assert rows[0].status == VerificationStatus.FAILED
+    assert "WEX\\HB2_HSAB_CLAIMS_20260617010230.xml" in rows[0].issue
+    assert "WEX\\HB2_HSAB_CLAIMS_20261103120000.xml" in rows[0].issue
 
 
 def test_expected_only_scenario(tmp_path: Path) -> None:
@@ -294,10 +389,11 @@ def test_hsab_xofilter_trigger_fixed_width_passed(tmp_path: Path) -> None:
         _config(tmp_path, expected, actual, verification_type="HSAB")
     ).run()
     assert exit_code == ExitCode.SUCCESS
-    xofilter_rows = [row for row in rows if row.output_type == "XOFilter"]
-    assert len(xofilter_rows) == 1
-    assert xofilter_rows[0].status == VerificationStatus.PASSED
-    assert xofilter_rows[0].run_type == "current"
+    assert len(rows) == 1
+    assert rows[0].output_type == "XOFilter"
+    assert rows[0].status == VerificationStatus.PASSED
+    assert rows[0].run_type == "current"
+    assert rows[0].expected_file.startswith("XOFilter\\")
 
 
 def test_hsab_xofilter_trigger_eight_digit_date_passed(tmp_path: Path) -> None:
@@ -324,12 +420,12 @@ def test_hsab_xofilter_trigger_eight_digit_date_passed(tmp_path: Path) -> None:
         _config(tmp_path, expected, actual, verification_type="HSAB")
     ).run()
     assert exit_code == ExitCode.SUCCESS
-    xofilter_rows = [row for row in rows if row.output_type == "XOFilter"]
-    assert len(xofilter_rows) == 1
-    assert xofilter_rows[0].status == VerificationStatus.PASSED
-    assert xofilter_rows[0].expected_file == (
-        "HCSC-BCBSIL-FSA-Eligibility-File_20261018.txt"
+    assert len(rows) == 1
+    assert rows[0].output_type == "XOFilter"
+    assert rows[0].status == VerificationStatus.PASSED
+    assert rows[0].expected_file == (
+        "XOFilter\\HCSC-BCBSIL-FSA-Eligibility-File_20261018.txt"
     )
-    assert xofilter_rows[0].actual_file == (
-        "HCSC-BCBSIL-FSA-Eligibility-File_20261103.txt"
+    assert rows[0].actual_file == (
+        "XOFilter\\HCSC-BCBSIL-FSA-Eligibility-File_20261103.txt"
     )

@@ -14,6 +14,8 @@ from output_verifier.constants import (
     ExitCode,
     FileFormat,
     IGNORE_MARKER_FILENAME,
+    OutputType,
+    RunType,
     VerificationStatus,
     get_solution_profile,
 )
@@ -62,10 +64,11 @@ class VerificationService:
         )
         LOGGER.info("Scenario discovery count: %s", len(inventory))
 
-        report_rows: list[ReportRow] = []
+        detail_rows: list[ReportRow] = []
         for discovered in inventory:
-            report_rows.extend(self._verify_discovered_output(discovered))
+            detail_rows.extend(self._verify_discovered_output(discovered))
 
+        report_rows = self._aggregate_run_folder_rows(detail_rows)
         has_failures = any(row.status == VerificationStatus.FAILED for row in report_rows)
         exit_code = ExitCode.COMPARISON_FAILURE if has_failures else ExitCode.SUCCESS
         LOGGER.info(
@@ -106,8 +109,20 @@ class VerificationService:
             ]
 
         if has_empty_ignore_marker(discovered.expected_folder):
+            expected_marker = self._relative_path(
+                scenario_key.run_type,
+                scenario_key.output_type.value,
+                IGNORE_MARKER_FILENAME,
+            )
             if discovered.actual_files:
-                actual_names = ", ".join(path.name for path in discovered.actual_files)
+                actual_paths = "\n".join(
+                    self._relative_path(
+                        scenario_key.run_type,
+                        scenario_key.output_type.value,
+                        path.name,
+                    )
+                    for path in discovered.actual_files
+                )
                 LOGGER.info(
                     "Failing scenario: empty %s in Expected but Actual has files. "
                     "scenario=%s run=%s output=%s files=%s",
@@ -115,7 +130,7 @@ class VerificationService:
                     scenario_key.scenario_path,
                     scenario_key.run_type,
                     scenario_key.output_type.value,
-                    actual_names,
+                    actual_paths,
                 )
                 return [
                     ReportRow(
@@ -123,13 +138,15 @@ class VerificationService:
                         verification_type=self._config.tpa_id.value,
                         scenario=scenario_key.display_scenario(),
                         run_type=scenario_key.run_type,
-                        output_type=scenario_key.output_type.value,
-                        expected_file=IGNORE_MARKER_FILENAME,
-                        actual_file=actual_names,
+                        output_type=self._output_type_label(
+                            scenario_key.run_type, scenario_key.output_type.value
+                        ),
+                        expected_file=expected_marker,
+                        actual_file=actual_paths,
                         status=VerificationStatus.FAILED,
                         issue=(
-                            f"Expected empty {IGNORE_MARKER_FILENAME} but Actual folder "
-                            f"contains file(s): {actual_names}"
+                            f"Expected empty {expected_marker} but Actual folder "
+                            f"contains file(s):\n{actual_paths}"
                         ),
                     )
                 ]
@@ -147,12 +164,14 @@ class VerificationService:
                     verification_type=self._config.tpa_id.value,
                     scenario=scenario_key.display_scenario(),
                     run_type=scenario_key.run_type,
-                    output_type=scenario_key.output_type.value,
-                    expected_file=IGNORE_MARKER_FILENAME,
+                    output_type=self._output_type_label(
+                        scenario_key.run_type, scenario_key.output_type.value
+                    ),
+                    expected_file=expected_marker,
                     actual_file="",
                     status=VerificationStatus.PASSED,
                     issue=(
-                        f"Output ignored via empty {IGNORE_MARKER_FILENAME} "
+                        f"Output ignored via empty {expected_marker} "
                         "(no Actual files)"
                     ),
                 )
@@ -189,12 +208,16 @@ class VerificationService:
                 and pair.normalized_identity not in reported_count_mismatch
             ):
                 reported_count_mismatch.add(pair.normalized_identity)
+                output_label = self._output_type_label(
+                    pair.scenario_key.run_type, pair.scenario_key.output_type.value
+                )
                 rows.append(
                     self._file_row(
                         pair,
                         status=VerificationStatus.FAILED,
                         issue=(
-                            f"File count mismatch. Expected: {expected_count}, Actual: {actual_count}"
+                            f"{output_label}: File count mismatch. "
+                            f"Expected: {expected_count}, Actual: {actual_count}"
                         ),
                         expected_name="",
                         actual_name="",
@@ -203,9 +226,139 @@ class VerificationService:
             rows.append(self._compare_pair(pair))
         return rows
 
+    @classmethod
+    def _aggregate_run_folder_rows(cls, rows: list[ReportRow]) -> list[ReportRow]:
+        """
+        Collapse detail rows into one Excel row per Scenario + Run Type.
+
+        Hold results are rolled into the matching current row.
+        """
+        if not rows:
+            return []
+
+        grouped: dict[tuple[str, str], list[ReportRow]] = defaultdict(list)
+        for row in rows:
+            grouped[(row.scenario, cls._effective_run_type(row.run_type))].append(row)
+
+        aggregated: list[ReportRow] = []
+        for (scenario, run_type), group in sorted(
+            grouped.items(), key=lambda item: (item[0][0].lower(), item[0][1])
+        ):
+            aggregated.append(cls._merge_run_group(scenario, run_type, group))
+        return aggregated
+
+    @classmethod
+    def _merge_run_group(
+        cls,
+        scenario: str,
+        run_type: str,
+        rows: list[ReportRow],
+    ) -> ReportRow:
+        output_types: list[str] = []
+        seen_outputs: set[str] = set()
+        expected_names: list[str] = []
+        actual_names: list[str] = []
+        seen_expected: set[str] = set()
+        seen_actual: set[str] = set()
+
+        for row in rows:
+            if row.output_type and row.output_type not in seen_outputs:
+                seen_outputs.add(row.output_type)
+                output_types.append(row.output_type)
+            for name in cls._split_multiline(row.expected_file):
+                if name not in seen_expected:
+                    seen_expected.add(name)
+                    expected_names.append(name)
+            for name in cls._split_multiline(row.actual_file):
+                if name not in seen_actual:
+                    seen_actual.add(name)
+                    actual_names.append(name)
+
+        failed_rows = [row for row in rows if row.status == VerificationStatus.FAILED]
+        passed_rows = [row for row in rows if row.status == VerificationStatus.PASSED]
+        not_verified_rows = [
+            row for row in rows if row.status == VerificationStatus.NOT_VERIFIED
+        ]
+
+        if failed_rows:
+            status = VerificationStatus.FAILED
+            issue_parts: list[str] = []
+            for row in failed_rows:
+                if row.expected_file or row.actual_file:
+                    header = (
+                        f"Expected: {row.expected_file or '(none)'}\n"
+                        f"Actual: {row.actual_file or '(none)'}"
+                    )
+                    issue_parts.append(
+                        f"{header}\n{row.issue}" if row.issue else header
+                    )
+                elif row.issue:
+                    issue_parts.append(row.issue)
+            issue = "\n\n".join(issue_parts)
+        elif passed_rows:
+            status = VerificationStatus.PASSED
+            # Keep informational Passed issues (e.g. ignore.txt marker).
+            issue = "\n\n".join(row.issue for row in passed_rows if row.issue)
+        elif not_verified_rows:
+            status = VerificationStatus.NOT_VERIFIED
+            issue = "\n\n".join(row.issue for row in not_verified_rows if row.issue)
+        else:
+            status = VerificationStatus.NOT_VERIFIED
+            issue = "No files available for verification"
+
+        first = rows[0]
+        return ReportRow(
+            solution_type=first.solution_type,
+            verification_type=first.verification_type,
+            scenario=scenario,
+            run_type=run_type,
+            output_type="\n".join(output_types),
+            expected_file="\n".join(expected_names),
+            actual_file="\n".join(actual_names),
+            status=status,
+            issue=issue,
+        )
+
+    @staticmethod
+    def _split_multiline(value: str) -> list[str]:
+        if not value:
+            return []
+        return [part for part in value.splitlines() if part]
+
+    @staticmethod
+    def _effective_run_type(run_type: str) -> str:
+        if run_type == RunType.HOLD.value:
+            return RunType.CURRENT.value
+        return run_type
+
+    @staticmethod
+    def _output_type_label(run_type: str, output_type: str) -> str:
+        if run_type == RunType.HOLD.value:
+            return f"{OutputType.LH1.value}\\Hold"
+        return output_type
+
+    @classmethod
+    def _relative_path(cls, run_type: str, output_type: str, filename: str) -> str:
+        base = cls._output_type_label(run_type, output_type)
+        if not filename:
+            return base
+        if not base:
+            return filename
+        return f"{base}\\{filename}"
+
     def _compare_pair(self, pair: MatchedFilePair) -> ReportRow:
         expected_name = pair.expected_file.name if pair.expected_file else ""
         actual_name = pair.actual_file.name if pair.actual_file else ""
+        expected_path = self._relative_path(
+            pair.scenario_key.run_type,
+            pair.scenario_key.output_type.value,
+            expected_name,
+        )
+        actual_path = self._relative_path(
+            pair.scenario_key.run_type,
+            pair.scenario_key.output_type.value,
+            actual_name,
+        )
 
         if pair.expected_file is None and pair.actual_file is not None:
             issue = (
@@ -217,8 +370,8 @@ class VerificationService:
                 pair,
                 status=VerificationStatus.FAILED,
                 issue=issue,
-                expected_name=expected_name,
-                actual_name=actual_name,
+                expected_name="",
+                actual_name=actual_path,
             )
 
         if pair.expected_file is not None and pair.actual_file is None:
@@ -231,8 +384,8 @@ class VerificationService:
                 pair,
                 status=VerificationStatus.FAILED,
                 issue=issue,
-                expected_name=expected_name,
-                actual_name=actual_name,
+                expected_name=expected_path,
+                actual_name="",
             )
 
         assert pair.expected_file is not None and pair.actual_file is not None
@@ -241,25 +394,25 @@ class VerificationService:
                 pair,
                 status=VerificationStatus.FAILED,
                 issue="Unsupported or invalid filename pattern",
-                expected_name=expected_name,
-                actual_name=actual_name,
+                expected_name=expected_path,
+                actual_name=actual_path,
             )
 
         LOGGER.info(
             "Comparing expected=%s actual=%s format=%s",
-            expected_name,
-            actual_name,
+            expected_path,
+            actual_path,
             pair.file_format,
         )
         comparison = self._compare_content(pair)
         issue_text = self._build_issue_text(comparison)
-        LOGGER.info("Comparison result for %s: %s", expected_name, comparison.status.value)
+        LOGGER.info("Comparison result for %s: %s", expected_path, comparison.status.value)
         return self._file_row(
             pair,
             status=comparison.status,
             issue=issue_text,
-            expected_name=expected_name,
-            actual_name=actual_name,
+            expected_name=expected_path,
+            actual_name=actual_path,
         )
 
     @staticmethod
@@ -361,7 +514,7 @@ class VerificationService:
             verification_type=self._config.tpa_id.value,
             scenario=key.display_scenario(),
             run_type=key.run_type,
-            output_type=key.output_type.value,
+            output_type=self._output_type_label(key.run_type, key.output_type.value),
             expected_file="",
             actual_file="",
             status=status,
@@ -383,7 +536,7 @@ class VerificationService:
             verification_type=self._config.tpa_id.value,
             scenario=key.display_scenario(),
             run_type=key.run_type,
-            output_type=key.output_type.value,
+            output_type=self._output_type_label(key.run_type, key.output_type.value),
             expected_file=expected_name,
             actual_file=actual_name,
             status=status,

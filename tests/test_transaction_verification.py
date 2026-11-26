@@ -118,10 +118,11 @@ def test_mdc_fails_csv_pass(tmp_path: Path) -> None:
     )
     rows, exit_code = VerificationService(_config(tmp_path, expected, actual)).run()
     assert exit_code == ExitCode.COMPARISON_FAILURE
-    mdc_rows = [row for row in rows if row.output_type == "MDC"]
-    csv_rows = [row for row in rows if row.output_type == "MDCExceptions"]
-    assert any(row.status == VerificationStatus.FAILED for row in mdc_rows)
-    assert all(row.status == VerificationStatus.PASSED for row in csv_rows)
+    assert len(rows) == 1
+    assert rows[0].status == VerificationStatus.FAILED
+    assert "MDC" in rows[0].output_type
+    assert "MDCExceptions" in rows[0].output_type
+    assert "MDC\\" in rows[0].issue
 
 
 def test_dup_acct_fails_only(tmp_path: Path) -> None:

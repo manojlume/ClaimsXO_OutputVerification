@@ -462,17 +462,17 @@ Worksheets:
 - `{Solution} {Verification} Verification` (e.g. `ClaimsXO GDI Verification`)  
 - `Summary`  
 
-Detail columns:
+Detail columns (one row per Scenario + Run Type; `hold` rolled into `current`):
 
 1. Solution Type  
 2. Verification Type  
 3. Scenario  
 4. Run Type  
-5. Output Type  
-6. Expected File  
-7. Actual File  
-8. Status  
-9. Issue  
+5. Output Type (newline-separated subfolders, e.g. `LH1` / `manual` / `LH1\Hold`)  
+6. Expected File (newline-separated relative paths, e.g. `LH1\GDI_LH1_....xml`)  
+7. Actual File (newline-separated relative paths)  
+8. Status (`Passed` if all files in all subfolders pass; `Failed` if any fail)  
+9. Issue (failed relative paths and comparison details)  
 
 Difference details are embedded in Issue (no separate Difference 1/2 columns).
 
@@ -503,7 +503,7 @@ Key dataclasses (`models.py`):
 | `MatchedFilePair` | expected/actual pair for compare |
 | `ComparisonOptions` | ignore lists passed to comparator |
 | `ComparisonDifference` / `ComparisonResult` | compare outcome |
-| `ReportRow` | one Excel row |
+| `ReportRow` | one Excel row (one per Scenario + Run folder) |
 | `ExecutionSummary` | counts + paths + exit code |
 
 Enums (`constants.py`): `SolutionType`, `VerificationType`, `OutputType`, `RunType`, `VerificationStatus`, `FileFormat`, `ExitCode`, `DifferenceType`.

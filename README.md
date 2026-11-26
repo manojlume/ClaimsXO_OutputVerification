@@ -247,7 +247,7 @@ VerificationReport_ClaimsXO_GDI_20260612_000022_fullrun_20260730113045.xlsx
 
 The report is written under `report.output_folder` from configuration.
 
-Difference details are embedded in **Issue** (no separate Difference 1/2 columns).
+One detail row is written per **Scenario + Run Type** (e.g. one row for `current`, covering all output subfolders). `hold` is rolled into the `current` row. Output Type lists subfolders newline-separated (`LH1` / `manual`). Expected/Actual File use relative paths (`LH1\file.xml`). If any file in any subfolder fails, Status is **Failed** and Issue lists each failed path with differences; if all succeed, Status is **Passed**.
 
 Worksheets:
 
@@ -260,13 +260,13 @@ Detail columns:
 2. Verification Type
 3. Scenario
 4. Run Type
-5. Output Type
-6. Expected File
-7. Actual File
+5. Output Type (newline-separated subfolders)
+6. Expected File (newline-separated relative paths)
+7. Actual File (newline-separated relative paths)
 8. Status (`Passed` / `Failed` / `NotVerified`)
-9. Issue (includes difference details when content mismatches)
+9. Issue (includes failed-file path and difference details)
 
-Formatting includes bold headers, frozen top row, auto-filter, wrapped Issue text, and status background colors from YAML.
+Formatting includes bold headers, frozen top row, auto-filter, wrapped Output Type/Expected/Actual/Issue text, and status background colors from YAML.
 
 ## Logging
 

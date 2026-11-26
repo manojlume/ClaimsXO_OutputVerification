@@ -114,7 +114,8 @@ def _write_detail_sheet(
         ]
         for column_index, value in enumerate(values, start=1):
             cell = sheet.cell(row=row_index, column=column_index, value=value)
-            if column_index == 9:
+            # Wrap Output Type, Expected File, Actual File, and Issue (run-folder aggregates).
+            if column_index in {5, 6, 7, 9}:
                 cell.alignment = wrap_alignment
             else:
                 cell.alignment = top_alignment
